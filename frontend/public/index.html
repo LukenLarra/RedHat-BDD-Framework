@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Películas - Catálogo</title>
+    <link rel="stylesheet" href="../src/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🎬 Catálogo de Películas</h1>
+        <p class="subtitle">Prototipo básico con Flask API + Node.js</p>
+      </header>
+
+      <main>
+        <!-- Formulario para agregar películas -->
+        <section class="add-movie-section">
+          <h2>Agregar Película</h2>
+          <form id="addMovieForm">
+            <div class="form-group">
+              <input type="text" id="title" placeholder="Título" required />
+              <input
+                type="number"
+                id="year"
+                placeholder="Año"
+                min="1900"
+                max="2100"
+                required
+              />
+              <input
+                type="text"
+                id="director"
+                placeholder="Director"
+                required
+              />
+            </div>
+            <button type="submit" class="btn-primary">Agregar</button>
+          </form>
+        </section>
+
+        <!-- Lista de películas -->
+        <section class="movies-section">
+          <div class="section-header">
+            <h2>Películas Disponibles</h2>
+            <button id="refreshBtn" class="btn-secondary">🔄 Actualizar</button>
+          </div>
+
+          <div id="loading" class="loading">Cargando películas...</div>
+          <div id="error" class="error" style="display: none"></div>
+
+          <div id="moviesList" class="movies-grid"></div>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          API Status: <span id="apiStatus" class="status-indicator">●</span>
+        </p>
+      </footer>
+    </div>
+
+    <script src="../src/app.js"></script>
+  </body>
+</html>
