@@ -1,0 +1,8 @@
+# Backend API Dependencies
+# =========================
+
+Flask==3.0.0
+flask-cors==4.0.0
+
+# Instalación:
+# pip install -r requirements.txt

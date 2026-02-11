@@ -1,0 +1,8 @@
+# Testing Dependencies
+# =====================
+
+behave==1.2.6
+requests==2.31.0
+
+# Instalación:
+# pip install -r requirements.txt

@@ -1,15 +1,14 @@
-# Dependencias del Proyecto Completo (Framework + Backend)
-# =========================================================
+# BDD Framework Core Dependencies
+# ==================================
+# Este archivo contiene solo las dependencias necesarias para ejecutar
+# el framework (bdd_framework.py). Las dependencias de cada servicio
+# están en sus respectivos directorios.
 
-# --- Backend API ---
-Flask==3.0.0
-flask-cors==4.0.0
-
-# --- Framework BDD ---
-behave==1.2.6
-requests==2.31.0
 PyYAML==6.0.1
+requests==2.31.0
 
-# Instalación:
-# pip install -r requirements.txt
-# cd frontend && npm install
+# Instalación completa del proyecto:
+# pip install -r requirements.txt          # Framework core
+# pip install -r backend/requirements.txt  # Backend API
+# pip install -r tests/requirements.txt    # Testing suite
+# cd frontend && npm install               # Frontend
