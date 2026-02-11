@@ -28,10 +28,10 @@ jobs:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install backend dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -42,37 +42,8 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci   # preferible a npm install en CI
+        run: npm ci
 
-      - name: Start backend
+      - name: Run framework
         run: |
-          python backend/app.py &
-          echo "BACKEND_PID=$!" >> $GITHUB_ENV
-          echo "Waiting for backend..."
-          for i in {1..30}; do
-            curl -sf $BACKEND_URL/health && echo "Backend ready!" && break || sleep 1
-          done
-
-      - name: Start frontend
-        working-directory: frontend
-        run: |
-          node server.js &
-          echo "FRONTEND_PID=$!" >> $GITHUB_ENV
-          echo "Waiting for frontend..."
-          for i in {1..30}; do
-            curl -sf $FRONTEND_URL && echo "Frontend ready!" && break || sleep 1
-          done
-
-      - name: Run BDD tests
-        env:
-          API_URL: http://localhost:5000
-        run: |
-          cd tests
-          python run_bdd_tests.py
-
-    #  - name: Upload test results
-    #    if: always()
-    #    uses: actions/upload-artifact@v4
-    #    with:
-    #      name: bdd-test-results
-    #      path: tests/reports/
+          python bdd_framework.py --config framework.yml

@@ -1,0 +1,15 @@
+# Dependencias del Proyecto Completo (Framework + Backend)
+# =========================================================
+
+# --- Backend API ---
+Flask==3.0.0
+flask-cors==4.0.0
+
+# --- Framework BDD ---
+behave==1.2.6
+requests==2.31.0
+PyYAML==6.0.1
+
+# Instalación:
+# pip install -r requirements.txt
+# cd frontend && npm install

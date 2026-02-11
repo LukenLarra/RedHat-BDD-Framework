@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "bdd_framework": "python bdd_framework.py --config framework.yml"
+  }
+}

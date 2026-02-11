@@ -1,0 +1,441 @@
+#!/usr/bin/env python3
+"""
+BDD Framework - Orquestador de Entorno de Testing
+==================================================
+
+Este script levanta el entorno completo (backend + frontend) y ejecuta los tests BDD.
+
+Uso:
+    python bdd_framework.py --config framework.yml
+    python bdd_framework.py --config framework.yml --profile ci
+    python bdd_framework.py --config framework.yml --tags @smoke
+    python bdd_framework.py --help
+"""
+
+import argparse
+import os
+import sys
+import subprocess
+import time
+import signal
+import yaml
+import requests
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+
+class Colors:
+    """Códigos de color ANSI para output en terminal"""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+
+
+class BDDFramework:
+    """Clase principal para gestionar el framework BDD"""
+
+    def __init__(self, config_path: str, profile: str = 'local'):
+        self.config_path = config_path
+        self.profile = profile
+        self.config = self._load_config()
+        self._validate_config()
+        self._apply_profile()
+        self.processes: Dict[str, subprocess.Popen] = {}
+        self.root_path = Path(__file__).parent.absolute()
+        
+        # Registrar manejadores de señales para cleanup
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def _load_config(self) -> Dict[str, Any]:
+        """Cargar configuración desde archivo YAML"""
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            self._log("INFO", f"Configuración cargada desde {self.config_path}")
+            return config
+        except FileNotFoundError:
+            self._log("ERROR", f"Archivo de configuración no encontrado: {self.config_path}")
+            sys.exit(1)
+        except yaml.YAMLError as e:
+            self._log("ERROR", f"Error al parsear YAML: {e}")
+            sys.exit(1)
+
+    def _validate_config(self):
+        """Validar estructura mínima del config"""
+        required_sections = ['backend', 'frontend', 'tests', 'general']
+        for section in required_sections:
+            if section not in self.config:
+                self._log("ERROR", f"Sección '{section}' no encontrada en config")
+                sys.exit(1)
+
+    def _apply_profile(self):
+        """Aplicar perfil sobre configuración base"""
+        profiles = self.config.get('profiles', {})
+        if self.profile and self.profile != 'local' and self.profile in profiles:
+            self._log("INFO", f"Aplicando perfil: {self.profile}")
+            self._deep_merge(self.config, profiles[self.profile])
+        elif self.profile and self.profile != 'local':
+            self._log("WARNING", f"Perfil '{self.profile}' no encontrado, usando configuración base")
+
+    def _deep_merge(self, base: dict, override: dict):
+        """Merge recursivo de diccionarios"""
+        for key, value in override.items():
+            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+                self._deep_merge(base[key], value)
+            else:
+                base[key] = value
+
+    def _log(self, level: str, message: str):
+        """Logger simple con colores"""
+        colors = {
+            "DEBUG": Colors.CYAN,
+            "INFO": Colors.GREEN,
+            "WARNING": Colors.WARNING,
+            "ERROR": Colors.FAIL
+        }
+        color = colors.get(level, Colors.ENDC)
+        timestamp = time.strftime("%H:%M:%S")
+        print(f"{color}[{timestamp}] [{level}]{Colors.ENDC} {message}")
+
+    def _signal_handler(self, signum, frame):
+        """Manejador de señales para cleanup graceful"""
+        self._log("WARNING", "Señal de interrupción recibida. Limpiando...")
+        self.cleanup()
+        sys.exit(0)
+
+    def _start_backend(self) -> bool:
+        """Iniciar el servidor backend"""
+        backend_config = self.config.get('backend', {})
+        
+        if not backend_config.get('enabled', True):
+            self._log("INFO", "Backend deshabilitado en configuración")
+            return True
+
+        self._log("INFO", "🚀 Iniciando backend...")
+        
+        backend_path = self.root_path / backend_config['path']
+        script = backend_config['script']
+        env = os.environ.copy()
+        env.update(backend_config.get('env', {}))
+
+        try:
+            # Usar pythonw en Windows para evitar ventanas adicionales, o python en otros OS
+            python_cmd = sys.executable
+            
+            process = subprocess.Popen(
+                [python_cmd, script],
+                cwd=str(backend_path),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            
+            self.processes['backend'] = process
+            self._log("INFO", f"Backend iniciado (PID: {process.pid})")
+            
+            # Retraso inicial para dar tiempo al backend a inicializarse completamente
+            time.sleep(3)  # Esperar 3 segundos antes de realizar el health_check
+
+            # Health check
+            if backend_config.get('health_check', {}).get('enabled', True):
+                if self._wait_for_service('backend', backend_config['health_check']):
+                    self._log("INFO", "✅ Backend está listo")
+                    return True
+                else:
+                    self._log("ERROR", "❌ Backend no respondió a tiempo")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            self._log("ERROR", f"Error iniciando backend: {e}")
+            return False
+
+    def _start_frontend(self) -> bool:
+        """Iniciar el servidor frontend"""
+        frontend_config = self.config.get('frontend', {})
+        
+        if not frontend_config.get('enabled', True):
+            self._log("INFO", "Frontend deshabilitado en configuración")
+            return True
+
+        self._log("INFO", "🚀 Iniciando frontend...")
+        
+        frontend_path = self.root_path / frontend_config['path']
+        script = frontend_config['script']
+        env = os.environ.copy()
+        env.update(frontend_config.get('env', {}))
+
+        try:
+            # Detectar comando node (node o nodejs)
+            node_cmd = 'node'
+            
+            process = subprocess.Popen(
+                [node_cmd, script],
+                cwd=str(frontend_path),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            
+            self.processes['frontend'] = process
+            self._log("INFO", f"Frontend iniciado (PID: {process.pid})")
+            
+            # Health check
+            if frontend_config.get('health_check', {}).get('enabled', True):
+                if self._wait_for_service('frontend', frontend_config['health_check']):
+                    self._log("INFO", "✅ Frontend está listo")
+                    return True
+                else:
+                    self._log("ERROR", "❌ Frontend no respondió a tiempo")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            self._log("ERROR", f"Error iniciando frontend: {e}")
+            return False
+
+    def _wait_for_service(self, name: str, health_check_config: Dict) -> bool:
+        """
+        Esperar a que un servicio esté disponible mediante health check
+        
+        Args:
+            name: Nombre del servicio
+            health_check_config: Configuración del health check
+            
+        Returns:
+            True si el servicio responde, False si timeout
+        """
+        url = health_check_config['url']
+        timeout = health_check_config.get('timeout', 30)
+        interval = health_check_config.get('interval', 1)
+        
+        self._log("INFO", f"Esperando a que {name} esté disponible en {url}...")
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                response = requests.get(url, timeout=2)
+                if response.status_code < 500:  # Cualquier respuesta no-500 se considera OK
+                    return True
+            except requests.exceptions.RequestException:
+                pass
+            
+            time.sleep(interval)
+        
+        return False
+
+    def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
+        """
+        Ejecutar los tests BDD
+        
+        Args:
+            extra_args: Argumentos adicionales para los tests
+            
+        Returns:
+            Código de salida de los tests
+        """
+        tests_config = self.config.get('tests', {})
+        
+        if not tests_config.get('enabled', True):
+            self._log("INFO", "Tests deshabilitados en configuración")
+            return 0
+
+        # Esperar un poco más si está configurado
+        startup_delay = self.config.get('general', {}).get('startup_delay', 0)
+        if startup_delay > 0:
+            self._log("INFO", f"Esperando {startup_delay} segundos adicionales...")
+            time.sleep(startup_delay)
+
+        self._log("INFO", "🧪 Ejecutando tests BDD...")
+        
+        tests_path = self.root_path / tests_config['path']
+        script = tests_config['script']
+        
+        # Preparar argumentos
+        behave_args = tests_config.get('behave_args', [])
+        if extra_args:
+            behave_args.extend(extra_args)
+        
+        # Preparar entorno para tests
+        env = os.environ.copy()
+        env.update(tests_config.get('env', {}))
+        
+        try:
+            # Ejecutar tests en el mismo proceso para ver output en tiempo real
+            result = subprocess.run(
+                [sys.executable, script] + behave_args,
+                cwd=str(tests_path),
+                env=env
+            )
+            
+            if result.returncode == 0:
+                self._log("INFO", "✅ Tests ejecutados exitosamente")
+            else:
+                self._log("ERROR", f"❌ Tests fallaron con código {result.returncode}")
+            
+            return result.returncode
+            
+        except Exception as e:
+            self._log("ERROR", f"Error ejecutando tests: {e}")
+            return 1
+
+    def cleanup(self):
+        """Limpiar y terminar todos los procesos"""
+        self._log("INFO", "🧹 Limpiando procesos...")
+        
+        for name, process in self.processes.items():
+            if process and process.poll() is None:  # Si el proceso sigue corriendo
+                self._log("INFO", f"Deteniendo {name} (PID: {process.pid})...")
+                try:
+                    if sys.platform == 'win32':
+                        # En Windows, usar taskkill para terminar el árbol de procesos
+                        subprocess.run(
+                            ['taskkill', '/F', '/T', '/PID', str(process.pid)],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL
+                        )
+                    else:
+                        # En Unix, usar SIGTERM
+                        process.terminate()
+                        process.wait(timeout=5)
+                    self._log("INFO", f"✅ {name} detenido")
+                except Exception as e:
+                    self._log("WARNING", f"Error al detener {name}: {e}")
+                    try:
+                        process.kill()  # Forzar si no termina
+                    except:
+                        pass
+
+        self._log("INFO", "✅ Cleanup completado")
+
+    def run(self, extra_test_args: Optional[List[str]] = None) -> int:
+        """
+        Ejecutar el framework completo
+        
+        Args:
+            extra_test_args: Argumentos adicionales para los tests
+            
+        Returns:
+            Código de salida (0 = éxito, 1 = error)
+        """
+        print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}BDD Framework - Iniciando Entorno de Testing{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}\n")
+        
+        try:
+            # 1. Iniciar Backend
+            if not self._start_backend():
+                self._log("ERROR", "No se pudo iniciar el backend")
+                self.cleanup()
+                return 1
+
+            # 2. Iniciar Frontend
+            if not self._start_frontend():
+                self._log("ERROR", "No se pudo iniciar el frontend")
+                self.cleanup()
+                return 1
+
+            # 3. Ejecutar Tests
+            test_result = self._run_tests(extra_test_args)
+
+            # 4. Cleanup
+            if self.config.get('general', {}).get('cleanup_on_exit', True):
+                self.cleanup()
+
+            # 5. Resultado final
+            print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
+            if test_result == 0:
+                print(f"{Colors.BOLD}{Colors.GREEN}✅ Framework ejecutado exitosamente{Colors.ENDC}")
+            else:
+                print(f"{Colors.BOLD}{Colors.FAIL}❌ Framework ejecutado con errores{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}\n")
+
+            return test_result
+
+        except Exception as e:
+            self._log("ERROR", f"Error inesperado: {e}")
+            self.cleanup()
+            return 1
+
+
+def main():
+    """Función principal"""
+    parser = argparse.ArgumentParser(
+        description='BDD Framework - Orquestador de Entorno de Testing',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Ejemplos de uso:
+  python bdd_framework.py --config framework.yml
+  python bdd_framework.py --config framework.yml --profile ci
+  python bdd_framework.py --config framework.yml --tags @smoke
+  python bdd_framework.py --config framework.yml --tags @critical --no-capture
+        """
+    )
+    
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='framework.yml',
+        help='Ruta al archivo de configuración YAML (default: framework.yml)'
+    )
+    
+    parser.add_argument(
+        '--profile',
+        type=str,
+        default='local',
+        help='Perfil de configuración (local, ci, debug)'
+    )
+    
+    parser.add_argument(
+        '--tags',
+        type=str,
+        help='Tags de Behave para filtrar tests (ej: @smoke, @critical)'
+    )
+    
+    parser.add_argument(
+        '--no-capture',
+        action='store_true',
+        help='No capturar stdout (pasar a Behave)'
+    )
+    
+    parser.add_argument(
+        '--format',
+        type=str,
+        choices=['pretty', 'plain', 'json'],
+        help='Formato de salida de Behave'
+    )
+
+    args, unknown = parser.parse_known_args()
+
+    # Construir argumentos extras para los tests
+    extra_args = []
+    if args.tags:
+        extra_args.append(f'--tags={args.tags}')
+    if args.no_capture:
+        extra_args.append('--no-capture')
+    if args.format:
+        extra_args.append(f'--format={args.format}')
+    
+    # Agregar argumentos desconocidos (para flexibilidad)
+    extra_args.extend(unknown)
+
+    # Ejecutar framework
+    framework = BDDFramework(args.config, profile=args.profile)
+    exit_code = framework.run(extra_args if extra_args else None)
+    sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,6 +1,7 @@
 """
 API Flask para gestión de películas
 """
+import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import database
@@ -101,7 +102,14 @@ def health_check():
     }), 200
 
 if __name__ == '__main__':
+    # Leer configuración desde variables de entorno
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    port = int(os.environ.get('FLASK_PORT', '5000'))
+    
     print("🚀 Iniciando API de Películas...")
-    print("📍 URL: http://localhost:5000")
+    print(f"📍 URL: http://{host}:{port}")
     print("📝 Documentación: http://localhost:5000/")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print(f"🔧 Debug mode: {debug_mode}")
+    
+    app.run(debug=debug_mode, host=host, port=port)
