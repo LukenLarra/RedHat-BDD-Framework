@@ -1,98 +1,120 @@
-# Configuración del Framework BDD
-# =================================
+# Stack-Agnostic Framework Configuration
+# ========================================
 
-# Configuración del Backend
-backend:
-  enabled: true
-  type: "python"
-  path: "backend"
-  script: "app.py"
-  host: "0.0.0.0"
-  port: 5000
-  health_check:
+# Project Metadata
+project:
+  name: "RedHat-BDD-Framework"
+  version: "1.0.0"
+
+# Installation Configuration
+# Sequential installation steps with explicit order
+installation:
+  steps:
+    - name: Install API deps
+      path: backend
+      command: pip install -r requirements.txt
+      service: api
+
+    - name: Install Web deps
+      path: frontend
+      command: npm install
+      service: web
+
+    - name: Install Test deps
+      path: tests
+      command: pip install -r requirements.txt
+
+# Services Configuration
+# Define any type of service (api, web, database, cache, worker, etc.)
+services:
+  api:
     enabled: true
-    url: "http://localhost:5000/health"
-    timeout: 30
-    interval: 1
-  env:
-    FLASK_APP: "app.py"
-    FLASK_ENV: "development"
-    FLASK_DEBUG: "0"
-    FLASK_HOST: "0.0.0.0"
-    FLASK_PORT: "5000"
-    DATABASE_URL: "sqlite:///movies.db"
+    path: "backend"
+    start_command: "python app.py"
+    host: "0.0.0.0"
+    port: 5000
+    health_check:
+      enabled: true
+      url: "http://localhost:5000/health"
+      timeout: 30
+      interval: 1
+    env:
+      FLASK_APP: "app.py"
+      FLASK_ENV: "development"
+      FLASK_DEBUG: "0"
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "5000"
+      DATABASE_URL: "sqlite:///movies.db"
+    dependencies: []
 
-# Configuración del Frontend
-frontend:
-  enabled: true
-  type: "node"
-  path: "frontend"
-  script: "server.js"
-  port: 3000
-  health_check:
+  web:
     enabled: true
-    url: "http://localhost:3000"
-    timeout: 30
-    interval: 1
-  env:
-    PORT: "3000"
-    NODE_ENV: "development"
-    API_URL: "http://localhost:5000"
+    path: "frontend"
+    start_command: "node server.js"
+    port: 3000
+    health_check:
+      enabled: true
+      url: "http://localhost:3000"
+      timeout: 30
+      interval: 1
+    env:
+      PORT: "3000"
+      NODE_ENV: "development"
+      API_URL: "http://localhost:5000"
+    dependencies: ["api"]
 
-# Configuración de los Tests BDD
+# Test Configuration
+# BDD tests are written in Python/Behave, but they test applications in ANY language
+# The framework orchestrates services via commands - it doesn't care about implementation details
 tests:
   enabled: true
-  type: "behave"
   path: "tests"
-  script: "run_bdd_tests.py"
+  command: "python run_bdd_tests.py --no-capture --no-capture-stderr --format=pretty"
+  bdd:
+    features: "tests/features"
+    steps: "tests/features/steps"
+    environment: "tests/features/environment.py"
   wait_for_services: true
   env:
     API_URL: "http://localhost:5000"
-  behave_args:
-    - "--no-capture"
-    - "--no-capture-stderr"
-    - "--format=pretty"
 
-# Configuración General
+# General Configuration
 general:
   stop_on_test_failure: false
   cleanup_on_exit: true
   log_level: "INFO"
   startup_delay: 2
 
-# Perfiles opcionales (sin cambiar estructura base)
+# Profiles Configuration
+# Override any configuration based on execution context
 profiles:
   ci:
-    backend:
-      health_check:
-        timeout: 60
-        interval: 2
-      env:
-        FLASK_ENV: "production"
-    frontend:
-      health_check:
-        timeout: 60
-        interval: 2
-      env:
-        NODE_ENV: "test"
+    services:
+      api:
+        health_check:
+          timeout: 60
+          interval: 2
+        env:
+          FLASK_ENV: "production"
+      web:
+        health_check:
+          timeout: 60
+          interval: 2
+        env:
+          NODE_ENV: "test"
     tests:
-      behave_args:
-        - "--format=json"
-        - "--outfile=reports/behave-results.json"
-        - "--format=junit"
-        - "--junit-directory=reports/junit"
+      command: "python run_bdd_tests.py --format=json --outfile=reports/behave-results.json --format=junit --junit-directory=reports/junit"
     general:
       startup_delay: 5
       stop_on_test_failure: true
 
   debug:
-    backend:
-      env:
-        FLASK_DEBUG: "1"
+    services:
+      api:
+        env:
+          FLASK_DEBUG: "1"
     tests:
-      behave_args:
-        - "--no-capture"
-        - "--verbose"
+      command: "python run_bdd_tests.py --no-capture --verbose"
     general:
       log_level: "DEBUG"
       cleanup_on_exit: false
