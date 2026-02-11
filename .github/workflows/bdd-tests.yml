@@ -64,6 +64,8 @@ jobs:
           done
 
       - name: Run BDD tests
+        env:
+          API_URL: http://localhost:5000
         run: |
           cd tests
           python run_bdd_tests.py
