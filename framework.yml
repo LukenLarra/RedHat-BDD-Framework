@@ -69,12 +69,11 @@ services:
 tests:
   enabled: true
   path: "tests"
-  command: "python run_bdd_tests.py --no-capture --no-capture-stderr --format=pretty"
+  command: "python run_bdd_tests.py --no-capture --format pretty"
   bdd:
     features: "tests/features"
     steps: "tests/features/steps"
     environment: "tests/features/environment.py"
-  wait_for_services: true
   env:
     API_URL: "http://localhost:5000"
 

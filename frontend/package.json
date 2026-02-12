@@ -1,20 +1,16 @@
 {
-  "name": "redhat-bdd-framework",
+  "name": "redhat-bdd-framework-frontend",
   "version": "1.0.0",
-  "description": "Prototipo de API de películas con Flask y Node.js",
+  "description": "Frontend web para API de películas",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "cucumber-js",
     "dev": "node server.js"
   },
-  "keywords": ["api", "flask", "nodejs", "movies", "bdd"],
+  "keywords": ["api", "nodejs", "movies", "express"],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "@cucumber/cucumber": "^12.6.0"
   }
 }
