@@ -68,11 +68,16 @@ class BDDFramework:
 
     def _validate_config(self):
         """Validar estructura mínima del config"""
-        required_sections = ['backend', 'frontend', 'tests', 'general']
+        required_sections = ['services', 'tests']
         for section in required_sections:
             if section not in self.config:
                 self._log("ERROR", f"Sección '{section}' no encontrada en config")
                 sys.exit(1)
+        
+        # Validar que services tenga al menos un servicio
+        if not self.config['services']:
+            self._log("ERROR", "No hay servicios definidos en la sección 'services'")
+            sys.exit(1)
 
     def _apply_profile(self):
         """Aplicar perfil sobre configuración base"""
@@ -109,28 +114,26 @@ class BDDFramework:
         self.cleanup()
         sys.exit(0)
 
-    def _start_backend(self) -> bool:
-        """Iniciar el servidor backend"""
-        backend_config = self.config.get('backend', {})
-        
-        if not backend_config.get('enabled', True):
-            self._log("INFO", "Backend deshabilitado en configuración")
+    def _start_service(self, service_name: str, service_config: Dict) -> bool:
+        """Iniciar un servicio genérico (stack-agnostic)"""
+        if not service_config.get('enabled', True):
+            self._log("INFO", f"{service_name} deshabilitado en configuración")
             return True
 
-        self._log("INFO", "🚀 Iniciando backend...")
+        self._log("INFO", f"🚀 Iniciando {service_name}...")
         
-        backend_path = self.root_path / backend_config['path']
-        script = backend_config['script']
+        service_path = self.root_path / service_config['path']
+        start_command = service_config['start_command']
         env = os.environ.copy()
-        env.update(backend_config.get('env', {}))
+        env.update(service_config.get('env', {}))
 
         try:
-            # Usar pythonw en Windows para evitar ventanas adicionales, o python en otros OS
-            python_cmd = sys.executable
+            # Parsear el comando (puede ser "python app.py", "node server.js", "./start.sh", etc.)
+            cmd_parts = start_command.split()
             
             process = subprocess.Popen(
-                [python_cmd, script],
-                cwd=str(backend_path),
+                cmd_parts,
+                cwd=str(service_path),
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -138,73 +141,51 @@ class BDDFramework:
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
             )
             
-            self.processes['backend'] = process
-            self._log("INFO", f"Backend iniciado (PID: {process.pid})")
+            self.processes[service_name] = process
+            self._log("INFO", f"{service_name} iniciado (PID: {process.pid})")
             
-            # Retraso inicial para dar tiempo al backend a inicializarse completamente
-            time.sleep(3)  # Esperar 3 segundos antes de realizar el health_check
+            # Retraso inicial para dar tiempo al servicio a inicializarse
+            time.sleep(2)
 
             # Health check
-            if backend_config.get('health_check', {}).get('enabled', True):
-                if self._wait_for_service('backend', backend_config['health_check']):
-                    self._log("INFO", "✅ Backend está listo")
+            if service_config.get('health_check', {}).get('enabled', False):
+                if self._wait_for_service(service_name, service_config['health_check']):
+                    self._log("INFO", f"✅ {service_name} está listo")
                     return True
                 else:
-                    self._log("ERROR", "❌ Backend no respondió a tiempo")
+                    self._log("ERROR", f"❌ {service_name} no respondió a tiempo")
                     return False
             
             return True
             
         except Exception as e:
-            self._log("ERROR", f"Error iniciando backend: {e}")
+            self._log("ERROR", f"Error iniciando {service_name}: {e}")
             return False
-
-    def _start_frontend(self) -> bool:
-        """Iniciar el servidor frontend"""
-        frontend_config = self.config.get('frontend', {})
+    
+    def _resolve_service_order(self) -> List[str]:
+        """Resolver el orden de inicio de servicios según dependencias"""
+        services = self.config.get('services', {})
+        ordered = []
+        visited = set()
         
-        if not frontend_config.get('enabled', True):
-            self._log("INFO", "Frontend deshabilitado en configuración")
-            return True
-
-        self._log("INFO", "🚀 Iniciando frontend...")
+        def visit(service_name: str):
+            if service_name in visited:
+                return
+            visited.add(service_name)
+            
+            service_config = services.get(service_name, {})
+            dependencies = service_config.get('dependencies', [])
+            
+            for dep in dependencies:
+                if dep in services:
+                    visit(dep)
+            
+            ordered.append(service_name)
         
-        frontend_path = self.root_path / frontend_config['path']
-        script = frontend_config['script']
-        env = os.environ.copy()
-        env.update(frontend_config.get('env', {}))
-
-        try:
-            # Detectar comando node (node o nodejs)
-            node_cmd = 'node'
-            
-            process = subprocess.Popen(
-                [node_cmd, script],
-                cwd=str(frontend_path),
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                stdin=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
-            )
-            
-            self.processes['frontend'] = process
-            self._log("INFO", f"Frontend iniciado (PID: {process.pid})")
-            
-            # Health check
-            if frontend_config.get('health_check', {}).get('enabled', True):
-                if self._wait_for_service('frontend', frontend_config['health_check']):
-                    self._log("INFO", "✅ Frontend está listo")
-                    return True
-                else:
-                    self._log("ERROR", "❌ Frontend no respondió a tiempo")
-                    return False
-            
-            return True
-            
-        except Exception as e:
-            self._log("ERROR", f"Error iniciando frontend: {e}")
-            return False
+        for service_name in services:
+            visit(service_name)
+        
+        return ordered
 
     def _wait_for_service(self, name: str, health_check_config: Dict) -> bool:
         """
@@ -335,26 +316,27 @@ class BDDFramework:
         print(f"{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}\n")
         
         try:
-            # 1. Iniciar Backend
-            if not self._start_backend():
-                self._log("ERROR", "No se pudo iniciar el backend")
-                self.cleanup()
-                return 1
+            # 1. Iniciar servicios en orden (respetando dependencias)
+            services = self.config.get('services', {})
+            service_order = self._resolve_service_order()
+            
+            self._log("INFO", f"Orden de inicio: {' -> '.join(service_order)}")
+            
+            for service_name in service_order:
+                service_config = services[service_name]
+                if not self._start_service(service_name, service_config):
+                    self._log("ERROR", f"No se pudo iniciar {service_name}")
+                    self.cleanup()
+                    return 1
 
-            # 2. Iniciar Frontend
-            if not self._start_frontend():
-                self._log("ERROR", "No se pudo iniciar el frontend")
-                self.cleanup()
-                return 1
-
-            # 3. Ejecutar Tests
+            # 2. Ejecutar Tests
             test_result = self._run_tests(extra_test_args)
 
-            # 4. Cleanup
+            # 3. Cleanup
             if self.config.get('general', {}).get('cleanup_on_exit', True):
                 self.cleanup()
 
-            # 5. Resultado final
+            # 4. Resultado final
             print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
             if test_result == 0:
                 print(f"{Colors.BOLD}{Colors.GREEN}✅ Framework ejecutado exitosamente{Colors.ENDC}")
