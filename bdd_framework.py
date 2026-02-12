@@ -217,6 +217,38 @@ class BDDFramework:
         
         return False
 
+    def _validate_bdd_structure(self, bdd_config: Dict):
+        """
+        Validar que la estructura BDD configurada existe
+        
+        Args:
+            bdd_config: Configuración de BDD con paths de features, steps y environment
+        """
+        features_path = bdd_config.get('features')
+        steps_path = bdd_config.get('steps')
+        environment_path = bdd_config.get('environment')
+        
+        if features_path:
+            full_features_path = self.root_path / features_path
+            if not full_features_path.exists():
+                self._log("WARNING", f"Directorio de features no encontrado: {features_path}")
+            else:
+                self._log("INFO", f"✅ Features encontrados en: {features_path}")
+        
+        if steps_path:
+            full_steps_path = self.root_path / steps_path
+            if not full_steps_path.exists():
+                self._log("WARNING", f"Directorio de steps no encontrado: {steps_path}")
+            else:
+                self._log("INFO", f"✅ Steps encontrados en: {steps_path}")
+        
+        if environment_path:
+            full_env_path = self.root_path / environment_path
+            if not full_env_path.exists():
+                self._log("WARNING", f"Archivo environment.py no encontrado: {environment_path}")
+            else:
+                self._log("INFO", f"✅ Environment encontrado en: {environment_path}")
+
     def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
         """
         Ejecutar los tests BDD
@@ -233,6 +265,11 @@ class BDDFramework:
             self._log("INFO", "Tests deshabilitados en configuración")
             return 0
 
+        # Validar estructura BDD si está configurada
+        bdd_config = tests_config.get('bdd', {})
+        if bdd_config:
+            self._validate_bdd_structure(bdd_config)
+
         # Esperar un poco más si está configurado
         startup_delay = self.config.get('general', {}).get('startup_delay', 0)
         if startup_delay > 0:
@@ -242,12 +279,14 @@ class BDDFramework:
         self._log("INFO", "🧪 Ejecutando tests BDD...")
         
         tests_path = self.root_path / tests_config['path']
-        script = tests_config['script']
+        command = tests_config['command']
         
-        # Preparar argumentos
-        behave_args = tests_config.get('behave_args', [])
+        # Parsear el comando completo (ej: "python run_bdd_tests.py --no-capture")
+        cmd_parts = command.split()
+        
+        # Agregar argumentos extra si los hay
         if extra_args:
-            behave_args.extend(extra_args)
+            cmd_parts.extend(extra_args)
         
         # Preparar entorno para tests
         env = os.environ.copy()
@@ -256,7 +295,7 @@ class BDDFramework:
         try:
             # Ejecutar tests en el mismo proceso para ver output en tiempo real
             result = subprocess.run(
-                [sys.executable, script] + behave_args,
+                cmd_parts,
                 cwd=str(tests_path),
                 env=env
             )
