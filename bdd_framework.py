@@ -249,6 +249,32 @@ class BDDFramework:
             else:
                 self._log("INFO", f"✅ Environment encontrado en: {environment_path}")
 
+    def _ensure_reports_directory(self, command: str, extra_args: Optional[List[str]] = None):
+        """
+        Crear directorio de reportes si no existe
+        
+        Args:
+            command: Comando de tests que puede contener --junit-directory
+            extra_args: Argumentos adicionales
+        """
+        # Buscar el path del directorio de reportes en el comando
+        cmd_parts = command.split()
+        if extra_args:
+            cmd_parts.extend(extra_args)
+        
+        for i, part in enumerate(cmd_parts):
+            if part == '--junit-directory' and i + 1 < len(cmd_parts):
+                reports_dir = self.root_path / cmd_parts[i + 1]
+                reports_dir.mkdir(parents=True, exist_ok=True)
+                self._log("INFO", f"📁 Directorio de reportes creado: {cmd_parts[i + 1]}")
+                break
+            elif part.startswith('--junit-directory='):
+                dir_path = part.split('=', 1)[1]
+                reports_dir = self.root_path / dir_path
+                reports_dir.mkdir(parents=True, exist_ok=True)
+                self._log("INFO", f"📁 Directorio de reportes creado: {dir_path}")
+                break
+
     def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
         """
         Ejecutar los tests BDD
@@ -280,6 +306,10 @@ class BDDFramework:
         
         tests_path = self.root_path / tests_config['path']
         command = tests_config['command']
+        
+        # Crear directorio de reportes si el comando lo requiere
+        if '--junit-directory' in command or (extra_args and any('--junit-directory' in arg for arg in extra_args)):
+            self._ensure_reports_directory(command, extra_args)
         
         # Parsear el comando completo (ej: "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
