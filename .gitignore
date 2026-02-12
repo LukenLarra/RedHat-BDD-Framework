@@ -37,9 +37,6 @@ Thumbs.db
 
 # BDD Framework
 reports/
-behave-results.json
-*.junit.xml
-framework-*.log
 .behave/
 allure-results/
 

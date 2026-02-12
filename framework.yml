@@ -103,7 +103,7 @@ profiles:
         env:
           NODE_ENV: "test"
     tests:
-      command: "python run_bdd_tests.py --format=json --outfile=reports/behave-results.json --format=junit --junit-directory=reports/junit"
+      command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
     general:
       startup_delay: 5
       stop_on_test_failure: true
