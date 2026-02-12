@@ -314,6 +314,18 @@ class BDDFramework:
         # Parsear el comando completo (ej: "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
         
+        # Modificar rutas relativas en el comando para que sean absolutas
+        # Behave ejecutará desde tests/ pero los reportes deben ir a la raíz/reports
+        for i, part in enumerate(cmd_parts):
+            if part == '--junit-directory' and i + 1 < len(cmd_parts):
+                # Convertir a path absoluto desde la raíz del proyecto
+                reports_path = self.root_path / cmd_parts[i + 1]
+                cmd_parts[i + 1] = str(reports_path)
+            elif part.startswith('--junit-directory='):
+                dir_path = part.split('=', 1)[1]
+                reports_path = self.root_path / dir_path
+                cmd_parts[i] = f'--junit-directory={reports_path}'
+        
         # Agregar argumentos extra si los hay
         if extra_args:
             cmd_parts.extend(extra_args)
