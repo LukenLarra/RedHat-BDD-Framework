@@ -126,10 +126,18 @@ class BDDFramework:
         start_command = service_config['start_command']
         env = os.environ.copy()
         env.update(service_config.get('env', {}))
+        
+        # Configurar encoding UTF-8 para Python en Windows
+        if sys.platform == 'win32':
+            env['PYTHONIOENCODING'] = 'utf-8'
 
         try:
             # Parsear el comando (puede ser "python app.py", "node server.js", "./start.sh", etc.)
             cmd_parts = start_command.split()
+            
+            # Si el comando usa 'python', reemplazar por sys.executable para usar el Python correcto
+            if cmd_parts[0].lower() in ['python', 'python3', 'python.exe']:
+                cmd_parts[0] = sys.executable
             
             process = subprocess.Popen(
                 cmd_parts,
@@ -154,6 +162,11 @@ class BDDFramework:
                     return True
                 else:
                     self._log("ERROR", f"❌ {service_name} no respondió a tiempo")
+                    # Mostrar errores del proceso para debugging
+                    if process.poll() is not None:
+                        stderr_output = process.stderr.read().decode('utf-8', errors='ignore')
+                        if stderr_output:
+                            self._log("ERROR", f"Error del proceso:\n{stderr_output}")
                     return False
             
             return True
