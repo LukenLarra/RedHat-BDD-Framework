@@ -5,7 +5,7 @@ import time
 
 def before_all(context):
     """Se ejecuta una vez antes de todos los tests"""
-    context.api_url = os.getenv("API_URL", "http://localhost:5000")
+    context.api_url = os.getenv("API_URL", "http://localhost:8000")
     
     # Verificar que la API está disponible
     max_retries = 30

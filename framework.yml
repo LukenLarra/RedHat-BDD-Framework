@@ -32,18 +32,16 @@ services:
     path: "backend"
     start_command: "python app.py"
     host: "0.0.0.0"
-    port: 5000
+    port: 8000
     health_check:
       enabled: true
-      url: "http://localhost:5000/health"
+      url: "http://localhost:8000/health"
       timeout: 30
       interval: 1
     env:
-      FLASK_APP: "app.py"
-      FLASK_ENV: "development"
-      FLASK_DEBUG: "0"
-      FLASK_HOST: "0.0.0.0"
-      FLASK_PORT: "5000"
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      API_RELOAD: "1"
       DATABASE_URL: "sqlite:///movies.db"
     dependencies: []
 
@@ -60,7 +58,7 @@ services:
     env:
       PORT: "3000"
       NODE_ENV: "development"
-      API_URL: "http://localhost:5000"
+      API_URL: "http://localhost:8000"
     dependencies: ["api"]
 
 # Test Configuration
@@ -75,7 +73,7 @@ tests:
     steps: "tests/features/steps"
     environment: "tests/features/environment.py"
   env:
-    API_URL: "http://localhost:5000"
+    API_URL: "http://localhost:8000"
 
 # General Configuration
 general:
@@ -94,7 +92,7 @@ profiles:
           timeout: 60
           interval: 2
         env:
-          FLASK_ENV: "production"
+          API_RELOAD: "0"
       web:
         health_check:
           timeout: 60
@@ -111,7 +109,7 @@ profiles:
     services:
       api:
         env:
-          FLASK_DEBUG: "1"
+          API_RELOAD: "1"
     tests:
       command: "python run_bdd_tests.py --no-capture --verbose"
     general:
