@@ -8,7 +8,9 @@ PyYAML==6.0.1
 requests==2.31.0
 
 # Instalación completa del proyecto:
-# pip install -r requirements.txt          # Framework core
-# pip install -r backend/requirements.txt  # Backend API
-# pip install -r tests/requirements.txt    # Testing suite
-# cd frontend && npm install               # Frontend
+# pip install -r requirements.txt              # Framework core
+# pip install -r backend/requirements.txt      # Backend API
+# pip install -r tests/requirements.txt        # Testing suite
+# pip install -r requirements-dev.txt          # Development tools (pre-commit, formatters, linters)
+# cd frontend && npm install                   # Frontend
+# cd frontend && npm install --save-dev        # Frontend dev tools

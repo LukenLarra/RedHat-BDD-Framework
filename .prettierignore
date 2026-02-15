@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+frontend/node_modules/
+package-lock.json
+frontend/package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Reports
+reports/
+.behave/
+allure-results/
+
+# Logs
+*.log

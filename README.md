@@ -83,26 +83,26 @@ El archivo `framework.yml` es el núcleo de la configuración. Aquí se definen 
 
 ```yaml
 project:
-  name: "RedHat-BDD-Framework"
-  version: "1.0.0"
+  name: 'RedHat-BDD-Framework'
+  version: '1.0.0'
 
 services:
   api:
     enabled: true
-    path: "backend"
-    start_command: "python app.py"
-    port: 5000
+    path: 'backend'
+    start_command: 'python app.py'
+    port: 8000
 
   web:
     enabled: true
-    path: "frontend"
-    start_command: "node server.js"
+    path: 'frontend'
+    start_command: 'node server.js'
     port: 3000
 
 tests:
   enabled: true
-  path: "tests"
-  command: "python run_bdd_tests.py --no-capture --format pretty"
+  path: 'tests'
+  command: 'python run_bdd_tests.py --no-capture --format pretty'
 ```
 
 ---
@@ -168,5 +168,33 @@ jobs:
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
 - **Orquestador:** `bdd_framework.py` para gestionar servicios y pruebas
+
+---
+
+## 🔧 **Code Quality & Pre-commit**
+
+El proyecto usa **pre-commit** para mantener un formato de código consistente en todo el equipo.
+
+### Instalación Rápida
+
+```bash
+npm run install:dev
+```
+
+### Herramientas Incluidas
+
+- **Python:** Black (formateo), isort (ordenar imports), Flake8 (linting)
+- **JavaScript:** Prettier (formateo)
+- **General:** Validación de YAML/JSON, limpieza de whitespace
+
+### Comandos Útiles
+
+```bash
+npm run format        # Formatear todo el código
+npm run lint          # Verificar estilo sin modificar
+npm run precommit     # Ejecutar todos los checks manualmente
+```
+
+📖 **Ver [Guía Completa de Pre-commit](docs/PRE-COMMIT-GUIDE.md)** para más detalles.
 
 ---

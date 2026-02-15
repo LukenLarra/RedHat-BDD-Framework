@@ -20,20 +20,8 @@
           <form id="addMovieForm">
             <div class="form-group">
               <input type="text" id="title" placeholder="Título" required />
-              <input
-                type="number"
-                id="year"
-                placeholder="Año"
-                min="1900"
-                max="2100"
-                required
-              />
-              <input
-                type="text"
-                id="director"
-                placeholder="Director"
-                required
-              />
+              <input type="number" id="year" placeholder="Año" min="1900" max="2100" required />
+              <input type="text" id="director" placeholder="Director" required />
             </div>
             <button type="submit" class="btn-primary">Agregar</button>
           </form>
@@ -54,9 +42,7 @@
       </main>
 
       <footer>
-        <p>
-          API Status: <span id="apiStatus" class="status-indicator">●</span>
-        </p>
+        <p>API Status: <span id="apiStatus" class="status-indicator">●</span></p>
       </footer>
     </div>
 

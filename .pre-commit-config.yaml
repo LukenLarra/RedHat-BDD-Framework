@@ -1,0 +1,88 @@
+# Pre-commit configuration for RedHat BDD Framework
+# ==================================================
+# Para instalar:
+#   1. pip install pre-commit
+#   2. pre-commit install
+#
+# Para ejecutar manualmente:
+#   pre-commit run --all-files
+#
+# Para actualizar hooks:
+#   pre-commit autoupdate
+
+repos:
+  # Hooks generales para todos los archivos
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Elimina espacios en blanco al final de las líneas
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      # Asegura que los archivos terminen con una línea vacía
+      - id: end-of-file-fixer
+      # Verifica la sintaxis de archivos YAML
+      - id: check-yaml
+        args: [--unsafe] # Permite tags personalizados de YAML
+      # Verifica la sintaxis de archivos JSON
+      - id: check-json
+      # Previene commits de archivos grandes
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      # Verifica que no haya conflictos de merge
+      - id: check-merge-conflict
+      # Previene commits directos a main/master
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
+      # Limpia archivos de requisitos de Python
+      - id: requirements-txt-fixer
+
+  # Python - Formateo con Black
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        name: black (Python formatter)
+        language_version: python3
+        args: [--line-length=100]
+
+  # Python - Ordenar imports con isort
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (sort Python imports)
+        args: [--profile=black, --line-length=100]
+
+  # Python - Linting con Flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: flake8 (Python linting)
+        args:
+          - --max-line-length=100
+          - --extend-ignore=E203,W503,E501,D100,D104,D107,D200,D205,D400,D401
+          # E203: whitespace before ':' (conflicto con black)
+          # W503: line break before binary operator (estilo antiguo)
+          # E501: line too long (black ya se encarga)
+          # D100-D401: Docstring formatting (menos estricto)
+        additional_dependencies: [flake8-docstrings]
+
+  # JavaScript/JSON/CSS/HTML - Formateo con Prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: prettier (JS/JSON/CSS/HTML formatter)
+        types_or: [javascript, jsx, json, css, html, markdown]
+        args: [--print-width=100, --single-quote, --trailing-comma=es5]
+        exclude: ^(node_modules/|frontend/node_modules/|package-lock\.json)
+
+  # Markdown - Linting (Deshabilitado temporalmente - requiere npm install --save-dev markdownlint-cli)
+  # - repo: https://github.com/igorshubovych/markdownlint-cli
+  #   rev: v0.39.0
+  #   hooks:
+  #     - id: markdownlint
+  #       name: markdownlint (Markdown linting)
+  #       args: [--fix]
+  #       exclude: ^(node_modules/|frontend/node_modules/)

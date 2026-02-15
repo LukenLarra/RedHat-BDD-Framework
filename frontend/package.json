@@ -7,10 +7,19 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["api", "nodejs", "movies", "express"],
+  "keywords": [
+    "api",
+    "nodejs",
+    "movies",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.47.0",
+    "prettier": "^3.2.4"
   }
 }

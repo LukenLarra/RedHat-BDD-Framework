@@ -1,12 +1,13 @@
 import os
-import requests
 import time
+
+import requests
 
 
 def before_all(context):
     """Se ejecuta una vez antes de todos los tests"""
-    context.api_url = os.getenv("API_URL", "http://localhost:5000")
-    
+    context.api_url = os.getenv("API_URL", "http://localhost:8000")
+
     # Verificar que la API está disponible
     max_retries = 30
     print(f"\nEsperando a que la API esté disponible en {context.api_url}...")
@@ -32,9 +33,9 @@ def after_scenario(context, scenario):
     """Se ejecuta después de cada escenario"""
     if scenario.status == "failed":
         print(f"\n✗ Escenario fallido: {scenario.name}")
-        if hasattr(context, 'response'):
+        if hasattr(context, "response"):
             print(f"  Última respuesta: {context.response}")
-        if hasattr(context, 'status_code'):
+        if hasattr(context, "status_code"):
             print(f"  Último status code: {context.status_code}")
 
 
