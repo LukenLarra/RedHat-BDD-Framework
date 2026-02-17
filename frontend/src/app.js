@@ -2,7 +2,7 @@
  * Aplicación cliente para consumir la API de películas
  */
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Elementos del DOM
 const moviesList = document.getElementById('moviesList');

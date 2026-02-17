@@ -91,7 +91,7 @@ services:
     enabled: true
     path: 'backend'
     start_command: 'python app.py'
-    port: 8000
+    port: 5000
 
   web:
     enabled: true
