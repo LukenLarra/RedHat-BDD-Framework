@@ -43,19 +43,13 @@ pip install -r requirements.txt
 - **Con Python:**
 
 ```bash
-python bdd_framework.py --config framework.yml --profile local
+python bdd_framework.py --config framework.yml
 ```
 
-- **Con npm en local:**
+- **Con npm:**
 
 ```bash
 npm test
-```
-
-- **Con npm en CI:**
-
-```bash
-npm test:ci
 ```
 
 ---
@@ -102,7 +96,7 @@ services:
 tests:
   enabled: true
   path: "tests"
-  command: "python run_bdd_tests.py --no-capture --format pretty"
+  command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
 ```
 
 ---
@@ -137,13 +131,23 @@ def step_api_running(context):
 
 ---
 
-## 🚀 **Ejecución Local vs CI**
+## 🚀 **Ejecución del Framework**
 
-### Local
+El framework utiliza una configuración de producción unificada que funciona tanto en desarrollo local como en entornos CI/CD. Esto garantiza consistencia entre todos los entornos.
+
+### Ejecución Básica
 
 ```bash
-python bdd_framework.py --config framework.yml --profile local
+python bdd_framework.py --config framework.yml
 ```
+
+### Características de la Ejecución
+
+- **Health checks robustos:** Timeout de 60 segundos con intervalo de 2 segundos
+- **Variables de entorno de producción:** `FLASK_ENV=production`, `NODE_ENV=test`
+- **Reportes JUnit automáticos:** Se generan en `reports/junit/` para integración con CI/CD
+- **Delay de inicio:** 5 segundos para asegurar estabilidad de servicios
+- **Stop on failure:** Los tests se detienen al primer fallo
 
 ### CI/CD
 
@@ -157,7 +161,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run BDD Framework
-        run: python bdd_framework.py --config framework.yml --profile ci
+        run: python bdd_framework.py --config framework.yml
 ```
 
 ---

@@ -4,8 +4,6 @@
   "description": "Stack-Agnostic BDD Testing Framework",
   "scripts": {
     "test": "python bdd_framework.py --config framework.yml",
-    "test:ci": "python bdd_framework.py --config framework.yml --profile ci",
-    "test:debug": "python bdd_framework.py --config framework.yml --profile debug",
     "test:smoke": "python bdd_framework.py --config framework.yml --tags @smoke",
     "install:all": "npm run install:backend && npm run install:frontend && npm run install:tests && npm run install:framework",
     "install:backend": "cd backend && pip install -r requirements.txt",
