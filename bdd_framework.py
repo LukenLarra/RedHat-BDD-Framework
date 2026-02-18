@@ -7,7 +7,6 @@ Este script levanta el entorno completo (backend + frontend) y ejecuta los tests
 
 Uso:
     python bdd_framework.py --config framework.yml
-    python bdd_framework.py --config framework.yml --profile ci
     python bdd_framework.py --config framework.yml --tags @smoke
     python bdd_framework.py --help
 """
@@ -41,12 +40,10 @@ class Colors:
 class BDDFramework:
     """Clase principal para gestionar el framework BDD"""
 
-    def __init__(self, config_path: str, profile: str = "local"):
+    def __init__(self, config_path: str):
         self.config_path = config_path
-        self.profile = profile
         self.config = self._load_config()
         self._validate_config()
-        self._apply_profile()
         self.processes: Dict[str, subprocess.Popen] = {}
         self.root_path = Path(__file__).parent.absolute()
 
@@ -80,25 +77,6 @@ class BDDFramework:
         if not self.config["services"]:
             self._log("ERROR", "No hay servicios definidos en la sección 'services'")
             sys.exit(1)
-
-    def _apply_profile(self):
-        """Aplicar perfil sobre configuración base"""
-        profiles = self.config.get("profiles", {})
-        if self.profile and self.profile != "local" and self.profile in profiles:
-            self._log("INFO", f"Aplicando perfil: {self.profile}")
-            self._deep_merge(self.config, profiles[self.profile])
-        elif self.profile and self.profile != "local":
-            self._log(
-                "WARNING", f"Perfil '{self.profile}' no encontrado, usando configuración base"
-            )
-
-    def _deep_merge(self, base: dict, override: dict):
-        """Merge recursivo de diccionarios"""
-        for key, value in override.items():
-            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-                self._deep_merge(base[key], value)
-            else:
-                base[key] = value
 
     def _log(self, level: str, message: str):
         """Logger simple con colores"""
@@ -460,7 +438,6 @@ def main():
         epilog="""
 Ejemplos de uso:
   python bdd_framework.py --config framework.yml
-  python bdd_framework.py --config framework.yml --profile ci
   python bdd_framework.py --config framework.yml --tags @smoke
   python bdd_framework.py --config framework.yml --tags @critical --no-capture
         """,
@@ -471,10 +448,6 @@ Ejemplos de uso:
         type=str,
         default="framework.yml",
         help="Ruta al archivo de configuración YAML (default: framework.yml)",
-    )
-
-    parser.add_argument(
-        "--profile", type=str, default="local", help="Perfil de configuración (local, ci, debug)"
     )
 
     parser.add_argument(
@@ -507,7 +480,7 @@ Ejemplos de uso:
     extra_args.extend(unknown)
 
     # Ejecutar framework
-    framework = BDDFramework(args.config, profile=args.profile)
+    framework = BDDFramework(args.config)
     exit_code = framework.run(extra_args if extra_args else None)
     sys.exit(exit_code)
 

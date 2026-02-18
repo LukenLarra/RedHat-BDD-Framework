@@ -53,8 +53,8 @@ services:
     health_check:
       enabled: true
       url: "http://localhost:3000"
-      timeout: 30
-      interval: 1
+      timeout: 60
+      interval: 2
     env:
       PORT: "3000"
       NODE_ENV: "development"
@@ -67,7 +67,7 @@ services:
 tests:
   enabled: true
   path: "tests"
-  command: "python run_bdd_tests.py --no-capture --format pretty"
+  command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
   bdd:
     features: "tests/features"
     steps: "tests/features/steps"
@@ -77,41 +77,7 @@ tests:
 
 # General Configuration
 general:
-  stop_on_test_failure: false
+  stop_on_test_failure: true
   cleanup_on_exit: true
   log_level: "INFO"
-  startup_delay: 2
-
-# Profiles Configuration
-# Override any configuration based on execution context
-profiles:
-  ci:
-    services:
-      api:
-        health_check:
-          timeout: 60
-          interval: 2
-        env:
-          API_RELOAD: "0"
-      web:
-        health_check:
-          timeout: 60
-          interval: 2
-        env:
-          NODE_ENV: "test"
-    tests:
-      command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
-    general:
-      startup_delay: 5
-      stop_on_test_failure: true
-
-  debug:
-    services:
-      api:
-        env:
-          API_RELOAD: "1"
-    tests:
-      command: "python run_bdd_tests.py --no-capture --verbose"
-    general:
-      log_level: "DEBUG"
-      cleanup_on_exit: false
+  startup_delay: 5
