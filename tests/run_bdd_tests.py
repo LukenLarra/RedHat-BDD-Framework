@@ -1,23 +1,23 @@
-import sys
 import os
+import sys
 
 # Agregar el directorio raíz del proyecto al PYTHONPATH
-root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_path not in sys.path:
     sys.path.insert(0, root_path)
 
-from behave import __main__ as behave_main
+from behave import __main__ as behave_main  # noqa: E402
 
 
 def run_bdd_tests(extra_args=None):
     """
     Ejecuta los tests BDD con Behave.
-    
+
     Args:
         extra_args: lista opcional de argumentos adicionales para Behave
                     ej: ['--tags=@smoke', '--no-capture']
     """
-    features_path = os.path.join(os.path.dirname(__file__), 'features')
+    features_path = os.path.join(os.path.dirname(__file__), "features")
 
     if not os.path.isdir(features_path):
         print(f"Error: no se encontró el directorio de features en '{features_path}'")
