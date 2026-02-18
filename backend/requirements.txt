@@ -4,5 +4,9 @@
 Flask==3.0.0
 flask-cors==4.0.0
 
+# Database - PostgreSQL with SQLAlchemy ORM
+SQLAlchemy>=2.0.0
+psycopg2-binary>=2.9.0
+
 # Instalación:
 # pip install -r requirements.txt

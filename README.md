@@ -66,12 +66,60 @@ npm test:ci
 
 - **Python 3.10+**
 - **Node.js 18+**
+- **PostgreSQL 12+** (para ejecutar localmente)
 - **pip** y **npm** instalados
 
-### Configuración
+### Configuración de Base de Datos
+
+El framework utiliza **PostgreSQL** con **SQLAlchemy ORM**. Hay dos opciones para ejecutar:
+
+#### Opción 1: PostgreSQL Local (Desarrollo)
+
+1. **Instalar PostgreSQL** (si no lo tienes):
+   - Windows: Descargar de [postgresql.org](https://www.postgresql.org/download/)
+   - Linux: `sudo apt-get install postgresql`
+   - macOS: `brew install postgresql`
+
+2. **Crear la base de datos**:
+
+   ```bash
+   # Conectar a PostgreSQL
+   psql -U postgres
+
+   # Crear la base de datos
+   CREATE DATABASE movies_db;
+   \q
+   ```
+
+   O usando herramientas gráficas como **pgAdmin** o **DBeaver**.
+
+3. **Configurar la conexión** en `framework.yml`:
+
+   ```yaml
+   env:
+     DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
+   ```
+
+   Ajusta usuario, contraseña, host y puerto según tu instalación.
+
+4. El schema y los datos de ejemplo se crear**automáticamente** al ejecutar el framework.
+
+#### Opción 2: GitHub Actions (CI/CD)
+
+En GitHub Actions, el framework usa un **servicio PostgreSQL efímero** que:
+
+- Se crea automáticamente al inicio del workflow
+- Se configura con las credenciales por defecto
+- Se destruye al finalizar la ejecución
+- **No requiere configuración adicional**
+
+Ver `.github/workflows/bdd-tests.yml` para detalles.
+
+### Configuración del Framework
 
 1. Asegúrate de tener un archivo `framework.yml` configurado correctamente.
 2. Define los servicios, dependencias y pruebas en el archivo de configuración.
+3. Verifica que `DATABASE_URL` apunte a tu instancia PostgreSQL.
 
 ---
 
@@ -164,9 +212,10 @@ jobs:
 
 ## 🏗️ **Arquitectura del Framework**
 
-- **Backend:** Python (Flask) con SQLite
+- **Backend:** Python (Flask) con PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
 - **Orquestador:** `bdd_framework.py` para gestionar servicios y pruebas
+- **Base de Datos:** PostgreSQL 12+ (efímera en CI, local en desarrollo)
 
 ---
