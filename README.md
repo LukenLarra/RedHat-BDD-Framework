@@ -170,3 +170,31 @@ jobs:
 - **Orquestador:** `bdd_framework.py` para gestionar servicios y pruebas
 
 ---
+
+## 🔧 **Code Quality & Pre-commit**
+
+El proyecto usa **pre-commit** para mantener un formato de código consistente en todo el equipo.
+
+### Instalación Rápida
+
+```bash
+npm run install:dev
+```
+
+### Herramientas Incluidas
+
+- **Python:** Black (formateo), isort (ordenar imports), Flake8 (linting)
+- **JavaScript:** Prettier (formateo)
+- **General:** Validación de YAML/JSON, limpieza de whitespace
+
+### Comandos Útiles
+
+```bash
+npm run format        # Formatear todo el código
+npm run lint          # Verificar estilo sin modificar
+npm run precommit     # Ejecutar todos los checks manualmente
+```
+
+📖 **Ver [Guía Completa de Pre-commit](docs/PRE-COMMIT-GUIDE.md)** para más detalles.
+
+---

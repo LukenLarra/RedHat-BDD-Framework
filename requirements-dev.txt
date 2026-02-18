@@ -1,0 +1,17 @@
+# Dependencias de Desarrollo
+# ===========================
+# Estas son las herramientas para desarrollo, formateo y linting
+# Instalación: pip install -r requirements-dev.txt
+
+# Pre-commit hooks
+pre-commit==3.6.0
+
+# Formateo y linting de código Python (todo en uno)
+ruff==0.2.0
+
+# Type checking (opcional)
+# mypy==1.8.0
+
+# Testing utilities (opcional)
+# pytest==8.0.0
+# pytest-cov==4.1.0

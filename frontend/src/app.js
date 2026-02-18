@@ -45,9 +45,7 @@ function showSuccess(message) {
  * Actualiza el estado de la API
  */
 function updateApiStatus(online) {
-  apiStatus.className = online
-    ? "status-indicator online"
-    : "status-indicator offline";
+  apiStatus.className = online ? "status-indicator online" : "status-indicator offline";
   apiStatus.title = online ? "API conectada" : "API desconectada";
 }
 
@@ -75,9 +73,7 @@ async function fetchMovies() {
     }
   } catch (error) {
     console.error("Error al obtener películas:", error);
-    showError(
-      "No se pudo conectar con la API. Asegúrate de que el backend esté corriendo.",
-    );
+    showError("No se pudo conectar con la API. Asegúrate de que el backend esté corriendo.");
     updateApiStatus(false);
     moviesList.innerHTML =
       '<p style="text-align: center; color: #64748b;">No hay películas disponibles</p>';
@@ -104,7 +100,7 @@ function displayMovies(movies) {
             <span class="year">${movie.year}</span>
             <p class="director">Dirigida por ${escapeHtml(movie.director)}</p>
         </div>
-    `,
+    `
     )
     .join("");
 }
@@ -153,9 +149,7 @@ async function addMovie(event) {
     }
   } catch (error) {
     console.error("Error al agregar película:", error);
-    showError(
-      "No se pudo agregar la película. Verifica la conexión con la API.",
-    );
+    showError("No se pudo agregar la película. Verifica la conexión con la API.");
   }
 }
 
