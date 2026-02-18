@@ -1,27 +1,27 @@
 # RedHat BDD Framework
 
-## 📖 Descripción
+## 📖 Description
 
-El **RedHat BDD Framework** es un framework diseñado para estandarizar la escritura y ejecución de pruebas BDD (Behavior-Driven Development). Permite probar integraciones entre servicios y comportamientos específicos de manera sencilla, utilizando datos simulados o servicios stub. Este framework es independiente del stack tecnológico y puede ejecutarse tanto localmente como en entornos de CI/CD.
+The **RedHat BDD Framework** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily, using mock data or stub services. This framework is technology stack-independent and can run both locally and in CI/CD environments.
 
 ---
 
 ## ⚡ **Quick Start**
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/LukenLarra/RedHat-BDD-Framework.git
 cd RedHat-BDD-Framework
 ```
 
-### 2. Instalar dependencias
+### 2. Install dependencies
 
-- **Backend (Python):**
+- **Backend and Tests (Python):**
 
 ```bash
-cd backend
-pip install -r requirements.txt
+make install-backend
+make install-tests
 ```
 
 - **Frontend (Node.js):**
@@ -31,38 +31,25 @@ cd ../frontend
 npm install
 ```
 
-- **Tests:**
+### 3. Run the framework
+
+- **With Python:**
 
 ```bash
-cd ../tests
-pip install -r requirements.txt
+python bdd_framework.py --config framework.yml
 ```
 
-### 3. Ejecutar el framework
-
-- **Con Python:**
+- **With npm:**
 
 ```bash
-python bdd_framework.py --config framework.yml --profile local
-```
-
-- **Con npm en local:**
-
-```bash
-npm test
-```
-
-- **Con npm en CI:**
-
-```bash
-npm test:ci
+python bdd_framework.py --config framework.yml
 ```
 
 ---
 
-## 📦 **Instalación Completa**
+## 📦 **Complete Installation**
 
-### Requisitos
+### Requirements
 
 - **Python 3.10+**
 - **Node.js 18+**
@@ -123,11 +110,11 @@ Ver `.github/workflows/bdd-tests.yml` para detalles.
 
 ---
 
-## 🔧 **Configuración del Framework**
+## 🔧 **Framework Configuration**
 
-El archivo `framework.yml` es el núcleo de la configuración. Aquí se definen los servicios, dependencias y pruebas.
+The `framework.yml` file is the core of the configuration. Here, services, dependencies, and tests are defined.
 
-### Ejemplo de Configuración
+### Configuration Example
 
 ```yaml
 project:
@@ -139,7 +126,7 @@ services:
     enabled: true
     path: "backend"
     start_command: "python app.py"
-    port: 5000
+    port: 8000
 
   web:
     enabled: true
@@ -150,16 +137,16 @@ services:
 tests:
   enabled: true
   path: "tests"
-  command: "python run_bdd_tests.py --no-capture --format pretty"
+  command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
 ```
 
 ---
 
-## 🧪 **Escribir Tests BDD**
+## 🧪 **Writing BDD Tests**
 
-### Estructura de Features
+### Feature Structure
 
-Los tests BDD se escriben en formato Gherkin. Ejemplo:
+BDD tests are written in Gherkin format. Example:
 
 ```gherkin
 Feature: Movie management
@@ -170,32 +157,42 @@ Feature: Movie management
     And the response contains a list of movies
 ```
 
-### Steps en Python
+### Steps in Python
 
-Los steps se definen en Python utilizando `behave`. Ejemplo:
+Steps are defined in Python using `behave`. Example:
 
 ```python
 from behave import given, when, then
 
 @given('the API is running')
 def step_api_running(context):
-    # Verificar que la API está activa
+    # Verify that the API is active
     pass
 ```
 
 ---
 
-## 🚀 **Ejecución Local vs CI**
+## 🚀 **Running the Framework**
 
-### Local
+The framework uses a unified production configuration that works both in local development and CI/CD environments. This ensures consistency across all environments.
+
+### Basic Execution
 
 ```bash
-python bdd_framework.py --config framework.yml --profile local
+python bdd_framework.py --config framework.yml
 ```
+
+### Execution Features
+
+- **Robust health checks:** 60-second timeout with 2-second intervals
+- **Production environment variables:** `FLASK_ENV=production`, `NODE_ENV=test`
+- **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
+- **Startup delay:** 5 seconds to ensure service stability
+- **Stop on failure:** Tests stop at the first failure
 
 ### CI/CD
 
-El framework incluye un workflow de GitHub Actions preconfigurado:
+The framework includes a preconfigured GitHub Actions workflow:
 
 ```yaml
 jobs:
@@ -205,12 +202,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run BDD Framework
-        run: python bdd_framework.py --config framework.yml --profile ci
+        run: python bdd_framework.py --config framework.yml
 ```
 
 ---
 
-## 🏗️ **Arquitectura del Framework**
+## 🏗️ **Framework Architecture**
 
 - **Backend:** Python (Flask) con PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)

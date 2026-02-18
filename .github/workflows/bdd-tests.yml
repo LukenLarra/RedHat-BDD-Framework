@@ -65,8 +65,8 @@ jobs:
       - name: Install Framework dependencies
         run: pip install -r requirements.txt
 
-      - name: Run BDD Framework (CI Profile)
-        run: python bdd_framework.py --config framework.yml --profile ci
+      - name: Run BDD Framework
+        run: python bdd_framework.py --config framework.yml
 
       - name: Check for test reports
         id: check_reports

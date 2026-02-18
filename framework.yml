@@ -32,19 +32,17 @@ services:
     path: "backend"
     start_command: "python app.py"
     host: "0.0.0.0"
-    port: 5000
+    port: 8000
     health_check:
       enabled: true
-      url: "http://localhost:5000/health"
+      url: "http://localhost:8000/health"
       timeout: 30
       interval: 1
     env:
-      FLASK_APP: "app.py"
-      FLASK_ENV: "development"
-      FLASK_DEBUG: "0"
-      FLASK_HOST: "0.0.0.0"
-      FLASK_PORT: "5000"
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      API_RELOAD: "1"
+      DATABASE_URL: "sqlite:///movies.db"
     dependencies: []
 
   web:
@@ -55,12 +53,12 @@ services:
     health_check:
       enabled: true
       url: "http://localhost:3000"
-      timeout: 30
-      interval: 1
+      timeout: 60
+      interval: 2
     env:
       PORT: "3000"
       NODE_ENV: "development"
-      API_URL: "http://localhost:5000"
+      API_URL: "http://localhost:8000"
     dependencies: ["api"]
 
 # Test Configuration
@@ -69,51 +67,17 @@ services:
 tests:
   enabled: true
   path: "tests"
-  command: "python run_bdd_tests.py --no-capture --format pretty"
+  command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
   bdd:
     features: "tests/features"
     steps: "tests/features/steps"
     environment: "tests/features/environment.py"
   env:
-    API_URL: "http://localhost:5000"
+    API_URL: "http://localhost:8000"
 
 # General Configuration
 general:
-  stop_on_test_failure: false
+  stop_on_test_failure: true
   cleanup_on_exit: true
   log_level: "INFO"
-  startup_delay: 2
-
-# Profiles Configuration
-# Override any configuration based on execution context
-profiles:
-  ci:
-    services:
-      api:
-        health_check:
-          timeout: 60
-          interval: 2
-        env:
-          FLASK_ENV: "production"
-      web:
-        health_check:
-          timeout: 60
-          interval: 2
-        env:
-          NODE_ENV: "test"
-    tests:
-      command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
-    general:
-      startup_delay: 5
-      stop_on_test_failure: true
-
-  debug:
-    services:
-      api:
-        env:
-          FLASK_DEBUG: "1"
-    tests:
-      command: "python run_bdd_tests.py --no-capture --verbose"
-    general:
-      log_level: "DEBUG"
-      cleanup_on_exit: false
+  startup_delay: 5

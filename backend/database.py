@@ -73,6 +73,7 @@ def init_db():
         session.close()
 
 
+
 def get_all_movies():
     """Obtiene todas las películas de la base de datos"""
     session = SessionLocal()
@@ -83,6 +84,7 @@ def get_all_movies():
         session.close()
 
 
+
 def get_movie_by_id(movie_id):
     """Obtiene una película por su ID"""
     session = SessionLocal()
@@ -91,6 +93,7 @@ def get_movie_by_id(movie_id):
         return movie.to_dict() if movie else None
     finally:
         session.close()
+
 
 
 def add_movie(title, year, director):

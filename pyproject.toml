@@ -1,0 +1,57 @@
+# Configuración de herramientas de Python
+# ========================================
+
+[tool.ruff]
+# Configuración general
+line-length = 100
+target-version = "py38"
+
+# Archivos a excluir
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    ".pytest_cache",
+    ".behave",
+    "node_modules",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Seleccionar reglas (equivalentes a flake8, isort, etc.)
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+
+# Reglas a ignorar
+ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line too long (ruff format se encarga)
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D107",  # Missing docstring in __init__
+    "D200",  # One-line docstring should fit on one line
+    "D205",  # 1 blank line required between summary line and description
+    "D400",  # First line should end with a period
+    "D401",  # First line should be in imperative mood
+]
+
+# Configuración de isort (ordenamiento de imports)
+[tool.ruff.lint.isort]
+known-first-party = ["bdd_framework"]
+
+[tool.ruff.format]
+# Configuración del formateador (compatible con black)
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
