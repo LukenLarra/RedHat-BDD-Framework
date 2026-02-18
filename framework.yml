@@ -42,7 +42,7 @@ services:
       API_HOST: "0.0.0.0"
       API_PORT: "8000"
       API_RELOAD: "1"
-      DATABASE_URL: "sqlite:///movies.db"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
     dependencies: []
 
   web:

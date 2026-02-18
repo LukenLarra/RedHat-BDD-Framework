@@ -39,12 +39,6 @@ npm install
 python bdd_framework.py --config framework.yml
 ```
 
-- **With npm:**
-
-```bash
-python bdd_framework.py --config framework.yml
-```
-
 ---
 
 ## 📦 **Complete Installation**
@@ -53,60 +47,60 @@ python bdd_framework.py --config framework.yml
 
 - **Python 3.10+**
 - **Node.js 18+**
-- **PostgreSQL 12+** (para ejecutar localmente)
-- **pip** y **npm** instalados
+- **PostgreSQL 12+** (to run locally)
+- **pip** and **npm** installed
 
-### Configuración de Base de Datos
+### Database Configuration
 
-El framework utiliza **PostgreSQL** con **SQLAlchemy ORM**. Hay dos opciones para ejecutar:
+The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
 
-#### Opción 1: PostgreSQL Local (Desarrollo)
+#### Option 1: Local PostgreSQL (Development)
 
-1. **Instalar PostgreSQL** (si no lo tienes):
-   - Windows: Descargar de [postgresql.org](https://www.postgresql.org/download/)
+1. **Install PostgreSQL** (if you don’t have it):
+   - Windows: Download from [postgresql.org](https://www.postgresql.org/download/)
    - Linux: `sudo apt-get install postgresql`
    - macOS: `brew install postgresql`
 
-2. **Crear la base de datos**:
+2. **Create the database**:
 
    ```bash
-   # Conectar a PostgreSQL
+   # Connect to PostgreSQL
    psql -U postgres
 
-   # Crear la base de datos
+   # Create the database
    CREATE DATABASE movies_db;
    \q
    ```
 
-   O usando herramientas gráficas como **pgAdmin** o **DBeaver**.
+   Or use graphical tools like **pgAdmin** or **DBeaver**.
 
-3. **Configurar la conexión** en `framework.yml`:
+3. **Configure the connection** in `framework.yml`:
 
    ```yaml
    env:
      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
    ```
 
-   Ajusta usuario, contraseña, host y puerto según tu instalación.
+   Adjust user, password, host, and port according to your installation.
 
-4. El schema y los datos de ejemplo se crear**automáticamente** al ejecutar el framework.
+4. The schema and sample data are created **automatically** when running the framework.
 
-#### Opción 2: GitHub Actions (CI/CD)
+#### Option 2: GitHub Actions (CI/CD)
 
-En GitHub Actions, el framework usa un **servicio PostgreSQL efímero** que:
+In GitHub Actions, the framework uses an **ephemeral PostgreSQL service** that:
 
-- Se crea automáticamente al inicio del workflow
-- Se configura con las credenciales por defecto
-- Se destruye al finalizar la ejecución
-- **No requiere configuración adicional**
+- Is created automatically at the start of the workflow
+- Is configured with default credentials
+- Is destroyed at the end of execution
+- **Requires no additional configuration**
 
-Ver `.github/workflows/bdd-tests.yml` para detalles.
+See `.github/workflows/bdd-tests.yml` for details.
 
-### Configuración del Framework
+### Framework Configuration
 
-1. Asegúrate de tener un archivo `framework.yml` configurado correctamente.
-2. Define los servicios, dependencias y pruebas en el archivo de configuración.
-3. Verifica que `DATABASE_URL` apunte a tu instancia PostgreSQL.
+1. Ensure you have a properly configured `framework.yml` file.
+2. Define services, dependencies, and tests in the configuration file.
+3. Verify that `DATABASE_URL` points to your PostgreSQL instance.
 
 ---
 
@@ -185,7 +179,7 @@ python bdd_framework.py --config framework.yml
 ### Execution Features
 
 - **Robust health checks:** 60-second timeout with 2-second intervals
-- **Production environment variables:** `FLASK_ENV=production`, `NODE_ENV=test`
+- **Environment variables:** Configured per service in `framework.yml`
 - **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
 - **Startup delay:** 5 seconds to ensure service stability
 - **Stop on failure:** Tests stop at the first failure
@@ -209,10 +203,10 @@ jobs:
 
 ## 🏗️ **Framework Architecture**
 
-- **Backend:** Python (Flask) con PostgreSQL + SQLAlchemy ORM
+- **Backend:** Python (FastAPI + Uvicorn) with PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
-- **Orquestador:** `bdd_framework.py` para gestionar servicios y pruebas
-- **Base de Datos:** PostgreSQL 12+ (efímera en CI, local en desarrollo)
+- **Orchestrator:** `bdd_framework.py` to manage services and tests
+- **Database:** PostgreSQL 12+ (ephemeral in CI, local in development)
 
 ---

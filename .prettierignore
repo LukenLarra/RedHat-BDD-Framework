@@ -18,8 +18,6 @@ build/
 
 # Base de datos
 *.db
-*.sqlite
-*.sqlite3
 
 # Reports
 reports/
