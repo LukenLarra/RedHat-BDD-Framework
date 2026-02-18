@@ -78,7 +78,7 @@ services:
     enabled: true
     path: "backend"
     start_command: "python app.py"
-    port: 5000
+    port: 8000
 
   web:
     enabled: true
@@ -161,7 +161,7 @@ jobs:
 
 ## 🏗️ **Framework Architecture**
 
-- **Backend:** Python (Flask) with SQLite
+- **Backend:** Python (FastAPI) con SQLite
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
 - **Orchestrator:** `bdd_framework.py` to manage services and tests
