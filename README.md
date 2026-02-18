@@ -33,16 +33,19 @@ npm install
 
 ### 3. Ejecutar el framework
 
+Para ejecutar el framework completo, utiliza uno de los siguientes comandos:
+
 - **Con Python:**
 
 ```bash
 python bdd_framework.py --config framework.yml
 ```
 
-- **Con npm:**
+- **Con Make:**
 
 ```bash
-npm test
+make run-backend
+make run-tests
 ```
 
 ---
