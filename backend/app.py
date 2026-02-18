@@ -1,39 +1,27 @@
 """
 API FastAPI para gestión de películas
 """
+import sys
 import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import database
+from contextlib import asynccontextmanager
+from schema import MovieCreate, Movie, MovieResponse, MoviesResponse, ErrorResponse
 
-# Modelos Pydantic para validación de datos
-class MovieCreate(BaseModel):
-    """Modelo para crear una nueva película"""
-    title: str = Field(..., min_length=1, description="Título de la película")
-    year: int = Field(..., gt=1800, lt=2100, description="Año de lanzamiento")
-    director: str = Field(..., min_length=1, description="Director de la película")
-
-class Movie(MovieCreate):
-    """Modelo de película con ID"""
-    id: int
-
-class MovieResponse(BaseModel):
-    """Respuesta estándar para una película"""
-    success: bool
-    data: Movie
-
-class MoviesResponse(BaseModel):
-    """Respuesta estándar para lista de películas"""
-    success: bool
-    count: int
-    data: List[Dict[str, Any]]
-
-class ErrorResponse(BaseModel):
-    """Respuesta de error"""
-    success: bool
-    error: str
+# Replace the startup event with a lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager to initialize and clean up resources."""
+    # Initialize the database
+    database.init_db()
+    yield
+    # Perform any cleanup if necessary
 
 # Crear aplicación FastAPI
 app = FastAPI(
@@ -41,7 +29,8 @@ app = FastAPI(
     description="API REST para gestión de películas con FastAPI",
     version="1.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configurar CORS
@@ -52,12 +41,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Inicializar la base de datos al arrancar
-@app.on_event("startup")
-async def startup_event():
-    """Inicializa la base de datos al arrancar la aplicación"""
-    database.init_db()
 
 @app.get("/")
 async def home():
