@@ -1,23 +1,23 @@
 # RedHat BDD Framework
 
-## 📖 Descripción
+## 📖 Description
 
-El **RedHat BDD Framework** es un framework diseñado para estandarizar la escritura y ejecución de pruebas BDD (Behavior-Driven Development). Permite probar integraciones entre servicios y comportamientos específicos de manera sencilla, utilizando datos simulados o servicios stub. Este framework es independiente del stack tecnológico y puede ejecutarse tanto localmente como en entornos de CI/CD.
+The **RedHat BDD Framework** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily, using mock data or stub services. This framework is technology stack-independent and can run both locally and in CI/CD environments.
 
 ---
 
 ## ⚡ **Quick Start**
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/LukenLarra/RedHat-BDD-Framework.git
 cd RedHat-BDD-Framework
 ```
 
-### 2. Instalar dependencias
+### 2. Install dependencies
 
-- **Backend y Tests (Python):**
+- **Backend and Tests (Python):**
 
 ```bash
 make install-backend
@@ -31,15 +31,15 @@ cd ../frontend
 npm install
 ```
 
-### 3. Ejecutar el framework
+### 3. Run the framework
 
-- **Con Python:**
+- **With Python:**
 
 ```bash
 python bdd_framework.py --config framework.yml
 ```
 
-- **Con npm:**
+- **With npm:**
 
 ```bash
 npm test
@@ -47,26 +47,26 @@ npm test
 
 ---
 
-## 📦 **Instalación Completa**
+## 📦 **Complete Installation**
 
-### Requisitos
+### Requirements
 
 - **Python 3.10+**
 - **Node.js 18+**
-- **pip** y **npm** instalados
+- **pip** and **npm** installed
 
-### Configuración
+### Configuration
 
-1. Asegúrate de tener un archivo `framework.yml` configurado correctamente.
-2. Define los servicios, dependencias y pruebas en el archivo de configuración.
+1. Ensure you have a properly configured `framework.yml` file.
+2. Define the services, dependencies, and tests in the configuration file.
 
 ---
 
-## 🔧 **Configuración del Framework**
+## 🔧 **Framework Configuration**
 
-El archivo `framework.yml` es el núcleo de la configuración. Aquí se definen los servicios, dependencias y pruebas.
+The `framework.yml` file is the core of the configuration. Here, services, dependencies, and tests are defined.
 
-### Ejemplo de Configuración
+### Configuration Example
 
 ```yaml
 project:
@@ -94,11 +94,11 @@ tests:
 
 ---
 
-## 🧪 **Escribir Tests BDD**
+## 🧪 **Writing BDD Tests**
 
-### Estructura de Features
+### Feature Structure
 
-Los tests BDD se escriben en formato Gherkin. Ejemplo:
+BDD tests are written in Gherkin format. Example:
 
 ```gherkin
 Feature: Movie management
@@ -109,42 +109,42 @@ Feature: Movie management
     And the response contains a list of movies
 ```
 
-### Steps en Python
+### Steps in Python
 
-Los steps se definen en Python utilizando `behave`. Ejemplo:
+Steps are defined in Python using `behave`. Example:
 
 ```python
 from behave import given, when, then
 
 @given('the API is running')
 def step_api_running(context):
-    # Verificar que la API está activa
+    # Verify that the API is active
     pass
 ```
 
 ---
 
-## 🚀 **Ejecución del Framework**
+## 🚀 **Running the Framework**
 
-El framework utiliza una configuración de producción unificada que funciona tanto en desarrollo local como en entornos CI/CD. Esto garantiza consistencia entre todos los entornos.
+The framework uses a unified production configuration that works both in local development and CI/CD environments. This ensures consistency across all environments.
 
-### Ejecución Básica
+### Basic Execution
 
 ```bash
 python bdd_framework.py --config framework.yml
 ```
 
-### Características de la Ejecución
+### Execution Features
 
-- **Health checks robustos:** Timeout de 60 segundos con intervalo de 2 segundos
-- **Variables de entorno de producción:** `FLASK_ENV=production`, `NODE_ENV=test`
-- **Reportes JUnit automáticos:** Se generan en `reports/junit/` para integración con CI/CD
-- **Delay de inicio:** 5 segundos para asegurar estabilidad de servicios
-- **Stop on failure:** Los tests se detienen al primer fallo
+- **Robust health checks:** 60-second timeout with 2-second intervals
+- **Production environment variables:** `FLASK_ENV=production`, `NODE_ENV=test`
+- **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
+- **Startup delay:** 5 seconds to ensure service stability
+- **Stop on failure:** Tests stop at the first failure
 
 ### CI/CD
 
-El framework incluye un workflow de GitHub Actions preconfigurado:
+The framework includes a preconfigured GitHub Actions workflow:
 
 ```yaml
 jobs:
@@ -159,11 +159,11 @@ jobs:
 
 ---
 
-## 🏗️ **Arquitectura del Framework**
+## 🏗️ **Framework Architecture**
 
-- **Backend:** Python (Flask) con SQLite
+- **Backend:** Python (Flask) with SQLite
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
-- **Orquestador:** `bdd_framework.py` para gestionar servicios y pruebas
+- **Orchestrator:** `bdd_framework.py` to manage services and tests
 
 ---
