@@ -1,46 +1,42 @@
 # Configuración de herramientas de Python
 # ========================================
 
-[tool.black]
+[tool.ruff]
+# Configuración general
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-    \.git
-  | \.venv
-  | venv
-  | env
-  | __pycache__
-  | \.pytest_cache
-  | \.behave
-  | node_modules
-  | build
-  | dist
-)/
-'''
+target-version = "py38"
 
-[tool.isort]
-profile = "black"
-line_length = 100
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-skip_glob = [
-    "venv/*",
-    "env/*",
-    "__pycache__/*",
-    "node_modules/*",
+# Archivos a excluir
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    ".pytest_cache",
+    ".behave",
+    "node_modules",
+    "build",
+    "dist",
 ]
 
-[tool.flake8]
-max-line-length = 100
-extend-ignore = [
-    "E203",  # whitespace before ':' (conflicto con black)
-    "W503",  # line break before binary operator
-    "E501",  # line too long (black se encarga)
+[tool.ruff.lint]
+# Seleccionar reglas (equivalentes a flake8, isort, etc.)
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+
+# Reglas a ignorar
+ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line too long (ruff format se encarga)
     "D100",  # Missing docstring in public module
     "D104",  # Missing docstring in public package
     "D107",  # Missing docstring in __init__
@@ -49,13 +45,13 @@ extend-ignore = [
     "D400",  # First line should end with a period
     "D401",  # First line should be in imperative mood
 ]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "env",
-    "node_modules",
-    "build",
-    "dist",
-]
+
+# Configuración de isort (ordenamiento de imports)
+[tool.ruff.lint.isort]
+known-first-party = ["bdd_framework"]
+
+[tool.ruff.format]
+# Configuración del formateador (compatible con black)
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

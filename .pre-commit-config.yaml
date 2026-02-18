@@ -13,7 +13,7 @@
 repos:
   # Hooks generales para todos los archivos
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       # Elimina espacios en blanco al final de las líneas
       - id: trailing-whitespace
@@ -36,37 +36,15 @@ repos:
       # Limpia archivos de requisitos de Python
       - id: requirements-txt-fixer
 
-  # Python - Formateo con Black
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  # Python - Linter y formateador con Ruff (reemplaza black, isort, flake8)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
     hooks:
-      - id: black
-        name: black (Python formatter)
-        language_version: python3
-        args: [--line-length=100]
-
-  # Python - Ordenar imports con isort
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        name: isort (sort Python imports)
-        args: [--profile=black, --line-length=100]
-
-  # Python - Linting con Flake8
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        name: flake8 (Python linting)
-        args:
-          - --max-line-length=100
-          - --extend-ignore=E203,W503,E501,D100,D104,D107,D200,D205,D400,D401
-          # E203: whitespace before ':' (conflicto con black)
-          # W503: line break before binary operator (estilo antiguo)
-          # E501: line too long (black ya se encarga)
-          # D100-D401: Docstring formatting (menos estricto)
-        additional_dependencies: [flake8-docstrings]
+      # Linting y auto-fix
+      - id: ruff
+        args: [--fix]
+      # Formateo de código (reemplaza black)
+      - id: ruff-format
 
   # JavaScript/JSON/CSS/HTML - Formateo con Prettier
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -75,7 +53,7 @@ repos:
       - id: prettier
         name: prettier (JS/JSON/CSS/HTML formatter)
         types_or: [javascript, jsx, json, css, html, markdown]
-        args: [--print-width=100, --single-quote, --trailing-comma=es5]
+        args: [--print-width=100, --trailing-comma=es5]
         exclude: ^(node_modules/|frontend/node_modules/|package-lock\.json)
 
   # Markdown - Linting (Deshabilitado temporalmente - requiere npm install --save-dev markdownlint-cli)

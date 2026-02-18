@@ -57,7 +57,7 @@ class BDDFramework:
     def _load_config(self) -> Dict[str, Any]:
         """Cargar configuración desde archivo YAML"""
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
             self._log("INFO", f"Configuración cargada desde {self.config_path}")
             return config
@@ -407,11 +407,11 @@ class BDDFramework:
         Returns:
             Código de salida (0 = éxito, 1 = error)
         """
-        print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
+        print(f"\n{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}")
         print(
             f"{Colors.BOLD}{Colors.HEADER}BDD Framework - Iniciando Entorno de Testing{Colors.ENDC}"
         )
-        print(f"{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}\n")
+        print(f"{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}\n")
 
         try:
             # 1. Iniciar servicios en orden (respetando dependencias)
@@ -435,14 +435,14 @@ class BDDFramework:
                 self.cleanup()
 
             # 4. Resultado final
-            print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}")
+            print(f"\n{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}")
             if test_result == 0:
                 print(
                     f"{Colors.BOLD}{Colors.GREEN}✅ Framework ejecutado exitosamente{Colors.ENDC}"
                 )
             else:
                 print(f"{Colors.BOLD}{Colors.FAIL}❌ Framework ejecutado con errores{Colors.ENDC}")
-            print(f"{Colors.BOLD}{Colors.HEADER}{'='*60}{Colors.ENDC}\n")
+            print(f"{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}\n")
 
             return test_result
 

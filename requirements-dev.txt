@@ -3,16 +3,11 @@
 # Estas son las herramientas para desarrollo, formateo y linting
 # Instalación: pip install -r requirements-dev.txt
 
-
-# Formateo de código Python
-black==24.1.1
-
-# Linting Python
-flake8==7.0.0
-flake8-docstrings==1.7.0
-isort==5.13.2
 # Pre-commit hooks
 pre-commit==3.6.0
+
+# Formateo y linting de código Python (todo en uno)
+ruff==0.2.0
 
 # Type checking (opcional)
 # mypy==1.8.0

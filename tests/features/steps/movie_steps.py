@@ -9,7 +9,7 @@ def step_api_running(context):
         response = requests.get(f"{context.api_url}/health", timeout=5)
         assert response.status_code == 200, "La API no responde correctamente"
     except requests.exceptions.RequestException as e:
-        raise AssertionError(f"No se pudo conectar a la API: {e}")
+        raise AssertionError(f"No se pudo conectar a la API: {e}") from e
 
 
 @when('I make a GET request to "/api/movies"')
@@ -20,7 +20,7 @@ def step_get_all_movies(context):
         context.status_code = response.status_code
         context.response = response.json()
     except requests.exceptions.RequestException as e:
-        raise AssertionError(f"Error al hacer la petición: {e}")
+        raise AssertionError(f"Error al hacer la petición: {e}") from e
 
 
 @when('I make a GET request to "/api/movies/{movie_id}"')
@@ -31,7 +31,7 @@ def step_get_movie_by_id(context, movie_id):
         context.status_code = response.status_code
         context.response = response.json()
     except requests.exceptions.RequestException as e:
-        raise AssertionError(f"Error al hacer la petición: {e}")
+        raise AssertionError(f"Error al hacer la petición: {e}") from e
 
 
 @given("there is a movie with ID {movie_id}")
@@ -43,24 +43,24 @@ def step_movie_exists(context, movie_id):
         data = response.json()
         assert data.get("success") is True, f"La película con ID {movie_id} no se encontró"
     except requests.exceptions.RequestException as e:
-        raise AssertionError(f"Error al verificar la película: {e}")
+        raise AssertionError(f"Error al verificar la película: {e}") from e
 
 
 @then("I get a response with status code 200")
 def step_status_code_200(context):
     """Verifica que el código de estado sea 200"""
-    assert (
-        context.status_code == 200
-    ), f"Se esperaba status code 200, se obtuvo {context.status_code}"
+    assert context.status_code == 200, (
+        f"Se esperaba status code 200, se obtuvo {context.status_code}"
+    )
 
 
 @then("the response contains a list of movies")
 def step_response_contains_movies(context):
     """Verifica que la respuesta contenga una lista de películas"""
     assert context.response is not None, "La respuesta es None"
-    assert (
-        context.response.get("success") is True
-    ), f"La respuesta indica error: {context.response.get('error')}"
+    assert context.response.get("success") is True, (
+        f"La respuesta indica error: {context.response.get('error')}"
+    )
 
     movies = context.response.get("data", [])
     assert isinstance(movies, list), f"Se esperaba una lista en 'data', se obtuvo {type(movies)}"
@@ -71,9 +71,9 @@ def step_response_contains_movies(context):
 def step_response_contains_movie_details(context, movie_id):
     """Verifica que la respuesta contenga los detalles de la película"""
     assert context.response is not None, "La respuesta es None"
-    assert (
-        context.response.get("success") is True
-    ), f"La respuesta indica error: {context.response.get('error')}"
+    assert context.response.get("success") is True, (
+        f"La respuesta indica error: {context.response.get('error')}"
+    )
 
     movie = context.response.get("data")
     assert movie is not None, f"No se encontró ninguna película con ID {movie_id}"

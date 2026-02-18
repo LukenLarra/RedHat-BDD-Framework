@@ -83,26 +83,26 @@ El archivo `framework.yml` es el núcleo de la configuración. Aquí se definen 
 
 ```yaml
 project:
-  name: 'RedHat-BDD-Framework'
-  version: '1.0.0'
+  name: "RedHat-BDD-Framework"
+  version: "1.0.0"
 
 services:
   api:
     enabled: true
-    path: 'backend'
-    start_command: 'python app.py'
+    path: "backend"
+    start_command: "python app.py"
     port: 5000
 
   web:
     enabled: true
-    path: 'frontend'
-    start_command: 'node server.js'
+    path: "frontend"
+    start_command: "node server.js"
     port: 3000
 
 tests:
   enabled: true
-  path: 'tests'
-  command: 'python run_bdd_tests.py --no-capture --format pretty'
+  path: "tests"
+  command: "python run_bdd_tests.py --no-capture --format pretty"
 ```
 
 ---

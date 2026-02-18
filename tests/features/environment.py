@@ -17,9 +17,9 @@ def before_all(context):
             if response.status_code == 200:
                 print(f"✓ API disponible en {context.api_url}")
                 break
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
             if i == max_retries - 1:
-                raise Exception(f"No se pudo conectar a la API en {context.api_url}")
+                raise Exception(f"No se pudo conectar a la API en {context.api_url}") from e
             time.sleep(1)
 
 
