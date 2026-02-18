@@ -17,11 +17,11 @@ cd RedHat-BDD-Framework
 
 ### 2. Instalar dependencias
 
-- **Backend (Python):**
+- **Backend y Tests (Python):**
 
 ```bash
-cd backend
-pip install -r requirements.txt
+make install-backend
+make install-tests
 ```
 
 - **Frontend (Node.js):**
@@ -29,13 +29,6 @@ pip install -r requirements.txt
 ```bash
 cd ../frontend
 npm install
-```
-
-- **Tests:**
-
-```bash
-cd ../tests
-pip install -r requirements.txt
 ```
 
 ### 3. Ejecutar el framework
