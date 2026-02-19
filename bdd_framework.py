@@ -451,11 +451,9 @@ Ejemplos de uso:
     )
 
     parser.add_argument(
-        '--tags',
-        type=str,
-        help='Tags de Behave para filtrar tests (ej: @smoke, @critical)'
+        "--tags", type=str, help="Tags de Behave para filtrar tests (ej: @smoke, @critical)"
     )
-    
+
     parser.add_argument(
         "--no-capture", action="store_true", help="No capturar stdout (pasar a Behave)"
     )

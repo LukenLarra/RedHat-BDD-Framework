@@ -39,12 +39,6 @@ npm install
 python bdd_framework.py --config framework.yml
 ```
 
-- **With npm:**
-
-```bash
-python bdd_framework.py --config framework.yml
-```
-
 ---
 
 ## 📦 **Complete Installation**
@@ -53,12 +47,60 @@ python bdd_framework.py --config framework.yml
 
 - **Python 3.10+**
 - **Node.js 18+**
+- **PostgreSQL 12+** (to run locally)
 - **pip** and **npm** installed
 
-### Configuration
+### Database Configuration
+
+The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
+
+#### Option 1: Local PostgreSQL (Development)
+
+1. **Install PostgreSQL** (if you don’t have it):
+   - Windows: Download from [postgresql.org](https://www.postgresql.org/download/)
+   - Linux: `sudo apt-get install postgresql`
+   - macOS: `brew install postgresql`
+
+2. **Create the database**:
+
+   ```bash
+   # Connect to PostgreSQL
+   psql -U postgres
+
+   # Create the database
+   CREATE DATABASE movies_db;
+   \q
+   ```
+
+   Or use graphical tools like **pgAdmin** or **DBeaver**.
+
+3. **Configure the connection** in `framework.yml`:
+
+   ```yaml
+   env:
+     DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
+   ```
+
+   Adjust user, password, host, and port according to your installation.
+
+4. The schema and sample data are created **automatically** when running the framework.
+
+#### Option 2: GitHub Actions (CI/CD)
+
+In GitHub Actions, the framework uses an **ephemeral PostgreSQL service** that:
+
+- Is created automatically at the start of the workflow
+- Is configured with default credentials
+- Is destroyed at the end of execution
+- **Requires no additional configuration**
+
+See `.github/workflows/bdd-tests.yml` for details.
+
+### Framework Configuration
 
 1. Ensure you have a properly configured `framework.yml` file.
-2. Define the services, dependencies, and tests in the configuration file.
+2. Define services, dependencies, and tests in the configuration file.
+3. Verify that `DATABASE_URL` points to your PostgreSQL instance.
 
 ---
 
@@ -137,7 +179,7 @@ python bdd_framework.py --config framework.yml
 ### Execution Features
 
 - **Robust health checks:** 60-second timeout with 2-second intervals
-- **Production environment variables:** `FLASK_ENV=production`, `NODE_ENV=test`
+- **Environment variables:** Configured per service in `framework.yml`
 - **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
 - **Startup delay:** 5 seconds to ensure service stability
 - **Stop on failure:** Tests stop at the first failure
@@ -161,37 +203,10 @@ jobs:
 
 ## 🏗️ **Framework Architecture**
 
-- **Backend:** Python (FastAPI) con SQLite
+- **Backend:** Python (FastAPI + Uvicorn) with PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
 - **Orchestrator:** `bdd_framework.py` to manage services and tests
-
----
-
-## 🔧 **Code Quality & Pre-commit**
-
-El proyecto usa **pre-commit** para mantener un formato de código consistente en todo el equipo.
-
-### Instalación Rápida
-
-```bash
-npm run install:dev
-```
-
-### Herramientas Incluidas
-
-- **Python:** Black (formateo), isort (ordenar imports), Flake8 (linting)
-- **JavaScript:** Prettier (formateo)
-- **General:** Validación de YAML/JSON, limpieza de whitespace
-
-### Comandos Útiles
-
-```bash
-npm run format        # Formatear todo el código
-npm run lint          # Verificar estilo sin modificar
-npm run precommit     # Ejecutar todos los checks manualmente
-```
-
-📖 **Ver [Guía Completa de Pre-commit](docs/PRE-COMMIT-GUIDE.md)** para más detalles.
+- **Database:** PostgreSQL 12+ (ephemeral in CI, local in development)
 
 ---

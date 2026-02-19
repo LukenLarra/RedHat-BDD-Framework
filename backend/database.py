@@ -1,85 +1,107 @@
 """
-Módulo de base de datos SQLite para gestión de películas
+Módulo de base de datos PostgreSQL con SQLAlchemy ORM para gestión de películas
 """
 
-import sqlite3
+import os
 
-DATABASE_PATH = "movies.db"
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
+
+# Leer DATABASE_URL de variables de entorno (configurada por el framework)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/movies_db")
+
+# Crear engine de SQLAlchemy
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+
+# Configurar session factory con scoped_session para thread-safety
+session_factory = sessionmaker(bind=engine)
+SessionLocal = scoped_session(session_factory)
+
+
+# Definir Base para modelos ORM
+class Base(DeclarativeBase):
+    pass
+
+
+# Modelo ORM para la tabla movies
+class Movie(Base):
+    __tablename__ = "movies"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    year = Column(Integer, nullable=False)
+    director = Column(String(255), nullable=False)
+
+    def to_dict(self):
+        """Convierte el objeto ORM a diccionario para JSON"""
+        return {"id": self.id, "title": self.title, "year": self.year, "director": self.director}
 
 
 def init_db():
-    """Inicializa la base de datos y crea la tabla de películas si no existe"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS movies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            year INTEGER NOT NULL,
-            director TEXT NOT NULL
-        )
-    """
-    )
+    """Inicializa la base de datos y crea las tablas si no existen"""
+    # Crear todas las tablas definidas en Base
+    Base.metadata.create_all(engine)
 
     # Insertar datos de ejemplo si la tabla está vacía
-    cursor.execute("SELECT COUNT(*) FROM movies")
-    if cursor.fetchone()[0] == 0:
-        sample_movies = [
-            ("El Padrino", 1972, "Francis Ford Coppola"),
-            ("Pulp Fiction", 1994, "Quentin Tarantino"),
-            ("El Caballero Oscuro", 2008, "Christopher Nolan"),
-            ("Forrest Gump", 1994, "Robert Zemeckis"),
-            ("Inception", 2010, "Christopher Nolan"),
-            ("Matrix", 1999, "Lana y Lilly Wachowski"),
-            ("Interstellar", 2014, "Christopher Nolan"),
-            ("Gladiador", 2000, "Ridley Scott"),
-        ]
-        cursor.executemany(
-            "INSERT INTO movies (title, year, director) VALUES (?, ?, ?)", sample_movies
-        )
-
-    conn.commit()
-    conn.close()
-    print(f"✓ Base de datos inicializada en {DATABASE_PATH}")
-
-
-def get_connection():
-    """Retorna una conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # Para acceder a columnas por nombre
-    return conn
+    session = SessionLocal()
+    try:
+        movie_count = session.query(Movie).count()
+        if movie_count == 0:
+            sample_movies = [
+                Movie(title="El Padrino", year=1972, director="Francis Ford Coppola"),
+                Movie(title="Pulp Fiction", year=1994, director="Quentin Tarantino"),
+                Movie(title="El Caballero Oscuro", year=2008, director="Christopher Nolan"),
+                Movie(title="Forrest Gump", year=1994, director="Robert Zemeckis"),
+                Movie(title="Inception", year=2010, director="Christopher Nolan"),
+                Movie(title="Matrix", year=1999, director="Lana y Lilly Wachowski"),
+                Movie(title="Interstellar", year=2014, director="Christopher Nolan"),
+                Movie(title="Gladiador", year=2000, director="Ridley Scott"),
+            ]
+            session.add_all(sample_movies)
+            session.commit()
+            print(f"✓ Base de datos inicializada con {len(sample_movies)} películas de ejemplo")
+        else:
+            print(f"✓ Base de datos ya contiene {movie_count} películas")
+    except Exception as e:
+        session.rollback()
+        print(f"✗ Error al inicializar base de datos: {e}")
+        raise
+    finally:
+        session.close()
 
 
 def get_all_movies():
     """Obtiene todas las películas de la base de datos"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM movies")
-    movies = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return movies
+    session = SessionLocal()
+    try:
+        movies = session.query(Movie).all()
+        return [movie.to_dict() for movie in movies]
+    finally:
+        session.close()
 
 
 def get_movie_by_id(movie_id):
     """Obtiene una película por su ID"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM movies WHERE id = ?", (movie_id,))
-    movie = cursor.fetchone()
-    conn.close()
-    return dict(movie) if movie else None
+    session = SessionLocal()
+    try:
+        movie = session.query(Movie).filter(Movie.id == movie_id).first()
+        return movie.to_dict() if movie else None
+    finally:
+        session.close()
 
 
 def add_movie(title, year, director):
     """Agrega una nueva película a la base de datos"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO movies (title, year, director) VALUES (?, ?, ?)", (title, year, director)
-    )
-    movie_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return movie_id
+    session = SessionLocal()
+    try:
+        new_movie = Movie(title=title, year=year, director=director)
+        session.add(new_movie)
+        session.commit()
+        session.refresh(new_movie)  # Refrescar para obtener el ID generado
+        movie_id = new_movie.id
+        return movie_id
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
