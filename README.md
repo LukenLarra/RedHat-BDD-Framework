@@ -199,6 +199,49 @@ jobs:
         run: python bdd_framework.py --config framework.yml
 ```
 
+### Testing CI/CD Locally with act
+
+You can run the GitHub Actions workflow locally using [act](https://github.com/nektos/act), which allows you to test CI/CD changes before pushing to GitHub.
+
+#### Prerequisites
+
+- **Docker Desktop** must be installed and running
+- **act** installed:
+  - **Windows:** `winget install nektos.act`
+  - **macOS:** `brew install act`
+  - **Linux:** `curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash`
+
+#### Usage
+
+```bash
+# List available workflows
+make act-list
+
+# Run the push workflow locally
+make act-run
+
+# Or use act directly
+act push
+```
+
+#### How it works
+
+When you run `act push`:
+
+1. act automatically pulls the `postgres:15-alpine` image from Docker Hub
+2. Creates and starts the PostgreSQL container with the correct configuration
+3. Executes all workflow steps (setup Python, Node.js, install dependencies, run tests)
+4. Generates test reports in `reports/junit/`
+5. Cleans up containers when done
+
+#### Important notes
+
+- **First run takes longer** as it downloads Docker images (~2-3 GB)
+- The "Upload test reports" and "Publish test results" steps are automatically skipped (require GitHub API)
+- All other steps run identically to GitHub Actions
+- PostgreSQL is handled automatically by act - no manual setup needed
+- **Windows users**: Test reports are generated inside the Docker container but may not appear in the local filesystem due to Docker Desktop's bind mount behavior. The workflow still validates correctly.
+
 ---
 
 ## 🏗️ **Framework Architecture**

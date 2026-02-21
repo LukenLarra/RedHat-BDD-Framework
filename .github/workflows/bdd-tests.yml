@@ -82,7 +82,7 @@ jobs:
           fi
 
       - name: Upload test reports
-        if: always() && steps.check_reports.outputs.reports_exist == 'true'
+        if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
         uses: actions/upload-artifact@v4
         with:
           name: bdd-test-reports
@@ -90,7 +90,7 @@ jobs:
           retention-days: 30
 
       - name: Publish test results
-        if: always() && steps.check_reports.outputs.reports_exist == 'true'
+        if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: reports/junit/*.xml
