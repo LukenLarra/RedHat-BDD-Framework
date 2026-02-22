@@ -98,9 +98,29 @@ See `.github/workflows/bdd-tests.yml` for details.
 
 ### Framework Configuration
 
-1. Ensure you have a properly configured `framework.yml` file.
-2. Define services, dependencies, and tests in the configuration file.
-3. Verify that `DATABASE_URL` points to your PostgreSQL instance.
+#### GitHub Actions Inputs
+
+The workflow `.github/workflows/bdd-tests.yml` includes the following configurable inputs:
+
+- **`service`**: Name of the service being tested. Default value: `bdd-framework`.
+- **`artifacts_log_dir`**: Directory where test reports are stored. Default value: `junit`.
+- **`bdd_config`**: Framework configuration file. Default value: `framework.yml`.
+- **`postgres_db`**: Name of the PostgreSQL database. Default value: `movies_db`.
+- **`has_frontend`**: Indicates whether the service has a frontend. Default value: `true`.
+
+#### Configuration Example
+
+If you want to override the default values, you can do so when calling the workflow from another workflow or manually. Example:
+
+```yaml
+jobs:
+  call-bdd-tests:
+    uses: ./.github/workflows/bdd-tests.yml
+    with:
+      service: "my-service"
+      artifacts_log_dir: "custom-logs"
+      bdd_config: "custom-config.yml"
+```
 
 ---
 
