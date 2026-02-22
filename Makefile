@@ -1,46 +1,46 @@
-# Makefile para simplificar la ejecución del framework BDD
+# Makefile to simplify the execution of the BDD framework
 
 # Variables
 PYTHON := python
 PIP := pip
 
-# Reglas
+# Rules
 .PHONY: install-backend install-tests run-backend run-tests clean act-list act-run act-help
 
 install-backend:
-	@echo "Instalando dependencias del backend..."
+	@echo "Installing backend dependencies..."
 	@$(PIP) install -r backend/requirements.txt
 
 install-tests:
-	@echo "Instalando dependencias de pruebas..."
+	@echo "Installing test dependencies..."
 	@$(PIP) install -r tests/requirements.txt
 
 run-backend:
-	@echo "Ejecutando el backend..."
+	@echo "Running the backend..."
 	@$(PYTHON) backend/app.py
 
 run-tests:
-	@echo "Ejecutando pruebas BDD..."
+	@echo "Running BDD tests..."
 	@$(PYTHON) tests/run_bdd_tests.py
 
 clean:
-	@echo "Limpiando archivos temporales..."
+	@echo "Cleaning temporary files..."
 	@find . -type d -name __pycache__ -exec rm -r {} +
 	@find . -type f -name '*.pyc' -delete
 
 # act - GitHub Actions local runner
 act-list:
-	@echo "Listando workflows disponibles..."
+	@echo "Listing available workflows..."
 	@act -l
 
 act-run:
-	@echo "Ejecutando workflow localmente con act..."
+	@echo "Running workflow locally with act..."
 	@act push --verbose
 
 act-help:
-	@echo "Comandos disponibles para act:"
-	@echo "  make act-list  - Lista todos los workflows disponibles"
-	@echo "  make act-run   - Ejecuta el workflow de push localmente"
+	@echo "Available commands for act:"
+	@echo "  make act-list  - Lists all available workflows"
+	@echo "  make act-run   - Runs the push workflow locally"
 	@echo ""
-	@echo "Requisito: Docker Desktop debe estar corriendo"
-	@echo "Instalación de act: https://github.com/nektos/act"
+	@echo "Requirement: Docker Desktop must be running"
+	@echo "act installation: https://github.com/nektos/act"
