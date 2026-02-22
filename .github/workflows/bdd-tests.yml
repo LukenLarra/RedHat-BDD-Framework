@@ -1,11 +1,14 @@
 name: Run BDD Tests
 
 on:
-  push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+      artifacts_log_dir:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -72,10 +75,10 @@ jobs:
         id: check_reports
         if: always()
         run: |
-          if [ -d "reports/junit" ] && [ -n "$(ls -A reports/junit/*.xml 2>/dev/null)" ]; then
+          if [ -d "reports/${{ inputs.artifacts_log_dir }}" ] && [ -n "$(ls -A reports/${{ inputs.artifacts_log_dir }}/*.xml 2>/dev/null)" ]; then
             echo "reports_exist=true" >> $GITHUB_OUTPUT
             echo "✅ Test reports found"
-            ls -lh reports/junit/
+            ls -lh reports/${{ inputs.artifacts_log_dir }}/
           else
             echo "reports_exist=false" >> $GITHUB_OUTPUT
             echo "⚠️  No test reports generated"
@@ -85,12 +88,12 @@ jobs:
         if: always() && steps.check_reports.outputs.reports_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: bdd-test-reports
-          path: reports/
+          name: bdd-test-reports-${{ inputs.service }}
+          path: reports/${{ inputs.artifacts_log_dir }}
           retention-days: 30
 
       - name: Publish test results
         if: always() && steps.check_reports.outputs.reports_exist == 'true'
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: reports/junit/*.xml
+          files: reports/${{ inputs.artifacts_log_dir }}/*.xml
