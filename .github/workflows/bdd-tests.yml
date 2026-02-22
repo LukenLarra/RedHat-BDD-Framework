@@ -1,14 +1,32 @@
 name: Run BDD Tests
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service name"
+        required: false
+        type: string
+        default: "bdd-framework"
+      artifacts_log_dir:
+        description: "Artifacts log directory"
+        required: false
+        type: string
+        default: "junit"
   workflow_call:
     inputs:
       service:
-        required: true
+        required: false
         type: string
+        default: "bdd-framework"
       artifacts_log_dir:
-        required: true
+        required: false
         type: string
+        default: "junit"
 
 permissions:
   contents: read
