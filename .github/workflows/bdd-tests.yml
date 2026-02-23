@@ -1,59 +1,93 @@
-name: Run BDD Tests
+name: Run BDD Tests (Reusable)
+
+# Reusable workflow: only callable from another workflow.
+# The caller is responsible for installing all dependencies and saving them
+# to cache. This workflow restores that cache and runs the BDD framework,
+# remaining fully agnostic to language, runtime, and database technology.
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      service:
-        description: "Service name"
-        required: false
-        type: string
-        default: "bdd-framework"
-      artifacts_log_dir:
-        description: "Artifacts log directory"
-        required: false
-        type: string
-        default: "junit"
-      postgres_db:
-        description: "PostgreSQL database name"
-        required: false
-        type: string
-        default: "movies_db"
-      bdd_config:
-        description: "BDD framework config file"
-        required: false
-        type: string
-        default: "framework.yml"
-      has_frontend:
-        description: "Whether the service has a frontend"
-        required: false
-        type: boolean
-        default: true
   workflow_call:
     inputs:
+      # ── Artifact & framework config ───────────────────────────────────────
       service:
+        description: "Service name used for artifact naming"
         required: false
         type: string
         default: "bdd-framework"
       artifacts_log_dir:
+        description: "Directory where test reports are written (relative to reports/)"
         required: false
         type: string
         default: "junit"
-      postgres_db:
-        required: false
-        type: string
-        default: "movies_db"
       bdd_config:
+        description: "Path to the BDD framework config file"
         required: false
         type: string
         default: "framework.yml"
-      has_frontend:
+
+      # ── Dependency cache (populated by the caller) ────────────────────────
+      cache_key:
+        description: "Cache key for restoring backend/test dependencies (e.g. pip venv)"
+        required: true
+        type: string
+      cache_path:
+        description: "Cache path for backend/test dependencies (e.g. .venv)"
+        required: true
+        type: string
+      secondary_cache_key:
+        description: "Cache key for restoring frontend dependencies (optional)"
+        required: false
+        type: string
+        default: ""
+      secondary_cache_path:
+        description: "Cache path for frontend dependencies (optional, e.g. frontend/node_modules)"
+        required: false
+        type: string
+        default: ""
+
+      # ── Python virtual environment ────────────────────────────────────────
+      python_venv_path:
+        description: >
+          Path to the Python virtual environment to activate (adds <path>/bin to PATH).
+          Set to '' to skip activation (e.g. when using pip --user install).
+        required: false
+        type: string
+        default: ".venv"
+
+      # ── Database configuration ────────────────────────────────────────────
+      db_enabled:
+        description: "Whether to start a database container"
         required: false
         type: boolean
         default: true
+      db_image:
+        description: "Docker image for the database (e.g. postgres:15-alpine, mysql:8, mongo:7)"
+        required: false
+        type: string
+        default: "postgres:15-alpine"
+      db_name:
+        description: "Database name to create"
+        required: false
+        type: string
+        default: "app_db"
+      db_port:
+        description: "Port to expose the database container on"
+        required: false
+        type: string
+        default: "5432"
+      database_url:
+        description: "Full connection string injected as DATABASE_URL environment variable"
+        required: false
+        type: string
+        default: ""
+
+    secrets:
+      db_user:
+        description: "Database user (optional, falls back to 'postgres')"
+        required: false
+      db_password:
+        description: "Database password"
+        required: false
 
 permissions:
   contents: read
@@ -64,73 +98,81 @@ jobs:
   bdd_tests:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ${{ inputs.postgres_db || 'movies_db' }}
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     env:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/${{ inputs.postgres_db || 'movies_db' }}"
+      DATABASE_URL: ${{ inputs.database_url }}
 
     steps:
-      - name: Set variables
-        id: vars
-        run: |
-          echo "service=${{ inputs.service || 'bdd-framework' }}" >> $GITHUB_OUTPUT
-          echo "artifacts_log_dir=${{ inputs.artifacts_log_dir || 'junit' }}" >> $GITHUB_OUTPUT
-          echo "bdd_config=${{ inputs.bdd_config || 'framework.yml' }}" >> $GITHUB_OUTPUT
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # ── Restore dependency caches prepared by the caller ──────────────────
+
+      - name: Restore primary cache (backend/test dependencies)
+        uses: actions/cache@v4
         with:
-          python-version: "3.10"
-          cache: "pip"
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
 
-      - name: Set up Node.js
-        if: ${{ inputs.has_frontend != 'false' }}
-        uses: actions/setup-node@v4
+      - name: Restore secondary cache (frontend dependencies)
+        if: inputs.secondary_cache_key != ''
+        uses: actions/cache@v4
         with:
-          node-version: "18"
+          path: ${{ inputs.secondary_cache_path }}
+          key: ${{ inputs.secondary_cache_key }}
 
-      - name: Install Backend dependencies
-        run: pip install -r requirements.txt
-        working-directory: backend
+      - name: Activate Python virtual environment
+        if: inputs.python_venv_path != ''
+        run: echo "$GITHUB_WORKSPACE/${{ inputs.python_venv_path }}/bin" >> $GITHUB_PATH
 
-      - name: Install Frontend dependencies
-        if: ${{ inputs.has_frontend != 'false' }}
-        run: npm install
-        working-directory: frontend
+      # ── Database ──────────────────────────────────────────────────────────
 
-      - name: Install Test dependencies
-        run: pip install -r requirements.txt
-        working-directory: tests
+      - name: Start database container
+        if: inputs.db_enabled
+        env:
+          DB_USER: ${{ secrets.db_user }}
+          DB_PASSWORD: ${{ secrets.db_password }}
+        run: |
+          docker run -d --name testdb \
+            -e POSTGRES_USER=${DB_USER:-postgres} \
+            -e POSTGRES_PASSWORD=${DB_PASSWORD:-postgres} \
+            -e POSTGRES_DB=${{ inputs.db_name }} \
+            -e MYSQL_USER=${DB_USER:-app} \
+            -e MYSQL_PASSWORD=${DB_PASSWORD:-app} \
+            -e MYSQL_DATABASE=${{ inputs.db_name }} \
+            -e MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root} \
+            -e MONGO_INITDB_DATABASE=${{ inputs.db_name }} \
+            -p ${{ inputs.db_port }}:${{ inputs.db_port }} \
+            ${{ inputs.db_image }}
 
-      - name: Install Framework dependencies
-        run: pip install -r requirements.txt
+      - name: Wait for database to be ready
+        if: inputs.db_enabled
+        run: |
+          echo "Waiting for database on port ${{ inputs.db_port }}..."
+          for i in $(seq 1 30); do
+            if nc -z localhost ${{ inputs.db_port }} 2>/dev/null; then
+              echo "✅ Database is ready (port ${{ inputs.db_port }} open)"
+              exit 0
+            fi
+            echo "  Attempt $i/30..."
+            sleep 2
+          done
+          echo "❌ Database did not become ready in time"
+          docker logs testdb
+          exit 1
+
+      # ── Run framework & collect results ───────────────────────────────────
 
       - name: Run BDD Framework
-        run: python bdd_framework.py --config ${{ steps.vars.outputs.bdd_config }}
+        run: python bdd_framework.py --config ${{ inputs.bdd_config }}
 
       - name: Check for test reports
         id: check_reports
         if: always()
         run: |
-          if [ -d "reports/${{ steps.vars.outputs.artifacts_log_dir }}" ] && [ -n "$(ls -A reports/${{ steps.vars.outputs.artifacts_log_dir }}/*.xml 2>/dev/null)" ]; then
+          if [ -d "reports/${{ inputs.artifacts_log_dir }}" ] && [ -n "$(ls -A reports/${{ inputs.artifacts_log_dir }}/*.xml 2>/dev/null)" ]; then
             echo "reports_exist=true" >> $GITHUB_OUTPUT
             echo "✅ Test reports found"
-            ls -lh reports/${{ steps.vars.outputs.artifacts_log_dir }}/
+            ls -lh reports/${{ inputs.artifacts_log_dir }}/
           else
             echo "reports_exist=false" >> $GITHUB_OUTPUT
             echo "⚠️  No test reports generated"
@@ -140,12 +182,12 @@ jobs:
         if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
         uses: actions/upload-artifact@v4
         with:
-          name: bdd-test-reports-${{ steps.vars.outputs.service }}
-          path: reports/${{ steps.vars.outputs.artifacts_log_dir }}
+          name: bdd-test-reports-${{ inputs.service }}
+          path: reports/${{ inputs.artifacts_log_dir }}
           retention-days: 30
 
       - name: Publish test results
         if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: reports/${{ steps.vars.outputs.artifacts_log_dir }}/*.xml
+          files: reports/${{ inputs.artifacts_log_dir }}/*.xml
