@@ -87,40 +87,103 @@ The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options
 
 #### Option 2: GitHub Actions (CI/CD)
 
-In GitHub Actions, the framework uses an **ephemeral PostgreSQL service** that:
+In GitHub Actions, the reusable workflow starts a **database container** (`docker run`) at the beginning of the job and tears it down automatically when the job finishes. The caller workflow is responsible for passing the image, credentials, and connection string via inputs and secrets.
 
-- Is created automatically at the start of the workflow
-- Is configured with default credentials
-- Is destroyed at the end of execution
-- **Requires no additional configuration**
+See the [Creating Your Caller Workflow](#creating-your-caller-workflow) section for configuration details.
 
-See `.github/workflows/bdd-tests.yml` for details.
+### CI/CD Configuration
 
-### Framework Configuration
+#### Workflow Architecture
 
-#### GitHub Actions Inputs
+`.github/workflows/bdd-tests.yml` is a **reusable workflow** (`workflow_call` only). It is never triggered directly — it must always be invoked by a caller workflow that you create in your own repository.
 
-The workflow `.github/workflows/bdd-tests.yml` includes the following configurable inputs:
+The recommended pattern for the caller workflow is a two-job setup:
 
-- **`service`**: Name of the service being tested. Default value: `bdd-framework`.
-- **`artifacts_log_dir`**: Directory where test reports are stored. Default value: `junit`.
-- **`bdd_config`**: Framework configuration file. Default value: `framework.yml`.
-- **`postgres_db`**: Name of the PostgreSQL database. Default value: `movies_db`.
-- **`has_frontend`**: Indicates whether the service has a frontend. Default value: `true`.
+1. **`setup-deps`** — sets up the runtime (Python, Node.js, etc.), installs dependencies, and saves them to the cache using `actions/cache`.
+2. **`bdd-tests`** — calls `.github/workflows/bdd-tests.yml`, passing the cache keys/paths generated in `setup-deps` and any database or service configuration.
 
-#### Configuration Example
+This design means the reusable workflow is fully agnostic to language, runtime, and database technology. The caller is responsible for everything environment-specific.
 
-If you want to override the default values, you can do so when calling the workflow from another workflow or manually. Example:
+#### Creating Your Caller Workflow
+
+Create a file such as `.github/workflows/ci.yml` in your repository. The `setup-deps` job is entirely yours to define — install whatever runtimes and dependencies your project needs (Python, Java, Node.js, Ruby, Go, etc.) and cache them. The `bdd-tests` job then calls the reusable workflow and passes those cache details.
+
+The structure always looks like this:
 
 ```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
-  call-bdd-tests:
+  setup-deps:
+    runs-on: ubuntu-latest
+    outputs:
+      # Expose the cache key so the bdd-tests job can reference it
+      deps_cache_key: ${{ steps.keys.outputs.deps_cache_key }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute cache key
+        id: keys
+        run: |
+          # Build a unique key based on your lockfile / dependency manifest
+          echo "deps_cache_key=<runtime>-${{ runner.os }}-${{ hashFiles('<your-lockfile>') }}" >> $GITHUB_OUTPUT
+
+      # ---------------------------------------------------------------
+      # Set up your runtime here.
+      # Examples:
+      #   Python  → actions/setup-python
+      #   Java    → actions/setup-java
+      #   Node.js → actions/setup-node
+      #   Ruby    → ruby/setup-ruby
+      #   Go      → actions/setup-go
+      # ---------------------------------------------------------------
+
+      - name: Restore dependency cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: <path-to-your-dependency-directory> # e.g. .venv / node_modules / ~/.m2
+          key: ${{ steps.keys.outputs.deps_cache_key }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: <your install command> # e.g. pip install / npm ci / mvn install
+
+  bdd-tests:
+    needs: setup-deps
     uses: ./.github/workflows/bdd-tests.yml
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     with:
       service: "my-service"
-      artifacts_log_dir: "custom-logs"
-      bdd_config: "custom-config.yml"
+      bdd_config: "framework.yml"
+
+      # Pass the cache produced by setup-deps
+      cache_key: ${{ needs.setup-deps.outputs.deps_cache_key }}
+      cache_path: "<path-to-your-dependency-directory>"
+
+      # Set to '' if your project is not Python-based
+      python_venv_path: ""
+
+      # Database — adjust image and URL to your technology
+      db_enabled: true
+      db_image: "postgres:15-alpine" # or mysql:8, mongo:7, etc.
+      db_name: "my_db"
+      db_port: "5432"
+      database_url: "<full connection string for your DATABASE_URL env var>"
+    secrets:
+      db_user: ${{ secrets.DB_USER }}
+      db_password: ${{ secrets.DB_PASSWORD }}
 ```
+
+> **Tip:** If your project has a second set of dependencies to cache (e.g. a frontend alongside a backend), expose a second cache key from `setup-deps` and pass it via `secondary_cache_key` / `secondary_cache_path`.
 
 ---
 
@@ -204,21 +267,6 @@ python bdd_framework.py --config framework.yml
 - **Startup delay:** 5 seconds to ensure service stability
 - **Stop on failure:** Tests stop at the first failure
 
-### CI/CD
-
-The framework includes a preconfigured GitHub Actions workflow:
-
-```yaml
-jobs:
-  bdd_tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run BDD Framework
-        run: python bdd_framework.py --config framework.yml
-```
-
 ### Testing CI/CD Locally with act
 
 You can run the GitHub Actions workflow locally using [act](https://github.com/nektos/act), which allows you to test CI/CD changes before pushing to GitHub.
@@ -248,9 +296,9 @@ act push
 
 When you run `act push`:
 
-1. act automatically pulls the `postgres:15-alpine` image from Docker Hub
-2. Creates and starts the PostgreSQL container with the correct configuration
-3. Executes all workflow steps (setup Python, Node.js, install dependencies, run tests)
+1. act pulls the required Docker images (runner + any database image defined in your caller workflow)
+2. Creates and starts the database container with the configuration you passed as inputs
+3. Executes all workflow steps (install dependencies, run tests)
 4. Generates test reports in `reports/junit/`
 5. Cleans up containers when done
 
