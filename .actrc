@@ -1,0 +1,11 @@
+# act configuration file
+# https://github.com/nektos/act
+
+# Use a larger image to match GitHub Actions environment more closely
+--platform ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Set container architecture
+--container-architecture linux/amd64
+
+# Verbose output for debugging (remove if too noisy)
+--verbose

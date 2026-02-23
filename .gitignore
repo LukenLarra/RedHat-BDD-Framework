@@ -37,3 +37,7 @@ Thumbs.db
 reports/
 .behave/
 allure-results/
+
+# act (GitHub Actions runner)
+.secrets
+.env.act
