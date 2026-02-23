@@ -12,13 +12,13 @@ name: Example
 
 on:
   push:
-    branches: [main]
+    branches: [main, 17-reusable-github-actions-file]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  # ── Job 1: Install all dependencies and persist them to cache ──────────────
+  # Install all dependencies and persist them to cache
   setup-deps:
     runs-on: ubuntu-latest
 
@@ -81,7 +81,7 @@ jobs:
         run: npm install
         working-directory: frontend
 
-  # ── Job 2: Run BDD tests using the reusable workflow ───────────────────────
+  #Run BDD tests using the reusable workflow
   bdd-tests:
     needs: setup-deps
     uses: ./.github/workflows/bdd-tests.yml
