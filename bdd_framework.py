@@ -106,8 +106,7 @@ class BDDFramework:
 
         service_path = self.root_path / service_config["path"]
         start_command = service_config["start_command"]
-        env = os.environ.copy()
-        env.update(service_config.get("env", {}))
+        env = {**service_config.get("env", {}), **os.environ}
 
         # Configurar encoding UTF-8 para Python en Windows
         if sys.platform == "win32":
@@ -328,8 +327,7 @@ class BDDFramework:
             cmd_parts.extend(extra_args)
 
         # Preparar entorno para tests
-        env = os.environ.copy()
-        env.update(tests_config.get("env", {}))
+        env = {**tests_config.get("env", {}), **os.environ}
 
         try:
             # Ejecutar tests en el mismo proceso para ver output en tiempo real

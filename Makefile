@@ -35,7 +35,7 @@ act-list:
 
 act-run:
 	@echo "Running workflow locally with act..."
-	@act push --verbose
+	@act push
 
 act-help:
 	@echo "Available commands for act:"

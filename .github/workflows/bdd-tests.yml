@@ -8,7 +8,6 @@ name: Run BDD Tests (Reusable)
 on:
   workflow_call:
     inputs:
-      # ── Artifact & framework config ───────────────────────────────────────
       service:
         description: "Service name used for artifact naming"
         required: false
@@ -25,7 +24,6 @@ on:
         type: string
         default: "framework.yml"
 
-      # ── Dependency cache (populated by the caller) ────────────────────────
       cache_key:
         description: "Cache key for restoring backend/test dependencies (e.g. pip venv)"
         required: true
@@ -45,7 +43,6 @@ on:
         type: string
         default: ""
 
-      # ── Python virtual environment ────────────────────────────────────────
       python_venv_path:
         description: >
           Path to the Python virtual environment to activate (adds <path>/bin to PATH).
@@ -54,7 +51,6 @@ on:
         type: string
         default: ".venv"
 
-      # ── Database configuration ────────────────────────────────────────────
       db_enabled:
         description: "Whether to start a database container"
         required: false
@@ -105,8 +101,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── Restore dependency caches prepared by the caller ──────────────────
-
       - name: Restore primary cache (backend/test dependencies)
         uses: actions/cache@v4
         with:
@@ -124,15 +118,24 @@ jobs:
         if: inputs.python_venv_path != ''
         run: echo "$GITHUB_WORKSPACE/${{ inputs.python_venv_path }}/bin" >> $GITHUB_PATH
 
-      # ── Database ──────────────────────────────────────────────────────────
-
       - name: Start database container
         if: inputs.db_enabled
         env:
           DB_USER: ${{ secrets.db_user }}
           DB_PASSWORD: ${{ secrets.db_password }}
         run: |
+          # When running locally with act, join the shared network so the runner
+          # can reach the container by its name (testdb). In real GitHub Actions
+          # the runner is a VM and -p port mapping is sufficient.
+          NETWORK_ARG=""
+          if [ -n "$ACT" ]; then
+            NETWORK_ARG="--network act_network"
+            # Clean up any leftover container from a previous act run
+            docker rm -f testdb 2>/dev/null || true
+          fi
+
           docker run -d --name testdb \
+            $NETWORK_ARG \
             -e POSTGRES_USER=${DB_USER:-postgres} \
             -e POSTGRES_PASSWORD=${DB_PASSWORD:-postgres} \
             -e POSTGRES_DB=${{ inputs.db_name }} \
@@ -147,10 +150,17 @@ jobs:
       - name: Wait for database to be ready
         if: inputs.db_enabled
         run: |
-          echo "Waiting for database on port ${{ inputs.db_port }}..."
+          # In act with act_network, the DB is reachable by container name, not localhost.
+          # In real GitHub Actions, the DB container is port-mapped to localhost.
+          DB_HOST="localhost"
+          if [ -n "$ACT" ]; then
+            DB_HOST="testdb"
+          fi
+
+          echo "Waiting for database on ${DB_HOST}:${{ inputs.db_port }}..."
           for i in $(seq 1 30); do
-            if nc -z localhost ${{ inputs.db_port }} 2>/dev/null; then
-              echo "✅ Database is ready (port ${{ inputs.db_port }} open)"
+            if python -c "import socket; s=socket.create_connection(('${DB_HOST}', ${{ inputs.db_port }}), timeout=2); s.close()" 2>/dev/null; then
+              echo "✅ Database is ready (${DB_HOST}:${{ inputs.db_port }} open)"
               exit 0
             fi
             echo "  Attempt $i/30..."
@@ -159,8 +169,6 @@ jobs:
           echo "❌ Database did not become ready in time"
           docker logs testdb
           exit 1
-
-      # ── Run framework & collect results ───────────────────────────────────
 
       - name: Run BDD Framework
         run: python bdd_framework.py --config ${{ inputs.bdd_config }}

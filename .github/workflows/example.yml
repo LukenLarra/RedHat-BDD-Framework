@@ -1,24 +1,13 @@
 name: Example
 
-# Calling workflow: responsible for the full environment setup.
-# Installs all dependencies (backend, frontend, tests) and saves them to
-# cache, then delegates test execution to the reusable bdd-tests.yml workflow.
-#
-# Notes on GitHub Actions cache sharing between jobs:
-#   - Cache keys are computed in setup-deps and exposed as job outputs so they
-#     can be referenced in the bdd-tests job's `with:` block via needs.*.outputs.
-#   - runner.os and hashFiles() are not available in `with:` for `uses:` jobs,
-#     so keys must flow through job outputs.
-
 on:
   push:
-    branches: [main, 17-reusable-github-actions-file]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  # Install all dependencies and persist them to cache
   setup-deps:
     runs-on: ubuntu-latest
 
@@ -30,7 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── Compute cache keys (so they can be passed to the reusable job) ─────
       - name: Compute cache keys
         id: keys
         run: |
@@ -38,10 +26,7 @@ jobs:
           NPM_KEY="npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}"
           echo "pip_cache_key=$PIP_KEY" >> $GITHUB_OUTPUT
           echo "npm_cache_key=$NPM_KEY" >> $GITHUB_OUTPUT
-          echo "pip key: $PIP_KEY"
-          echo "npm key: $NPM_KEY"
 
-      # ── Python / pip ────────────────────────────────────────────────────────
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -63,7 +48,6 @@ jobs:
           .venv/bin/pip install -r backend/requirements.txt
           .venv/bin/pip install -r tests/requirements.txt
 
-      # ── Node.js / npm ───────────────────────────────────────────────────────
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
         with:
@@ -81,7 +65,6 @@ jobs:
         run: npm install
         working-directory: frontend
 
-  #Run BDD tests using the reusable workflow
   bdd-tests:
     needs: setup-deps
     uses: ./.github/workflows/bdd-tests.yml
@@ -91,26 +74,18 @@ jobs:
       pull-requests: write
 
     with:
-      # ── Framework config ──────────────────────────────────────────────────
       service: "movies-api"
-      artifacts_log_dir: "junit"
-      bdd_config: "framework.yml"
 
-      # ── Dependency caches (keys come from setup-deps job outputs) ─────────
       cache_key: ${{ needs.setup-deps.outputs.pip_cache_key }}
       cache_path: ".venv"
       secondary_cache_key: ${{ needs.setup-deps.outputs.npm_cache_key }}
       secondary_cache_path: "frontend/node_modules"
 
-      # ── Python venv activation ────────────────────────────────────────────
-      python_venv_path: ".venv"
-
-      # ── Database: PostgreSQL 15 ───────────────────────────────────────────
       db_enabled: true
       db_image: "postgres:15-alpine"
       db_name: "movies_db"
       db_port: "5432"
-      database_url: "postgresql://postgres:postgres@localhost:5432/movies_db"
+      database_url: "postgresql://postgres:postgres@testdb:5432/movies_db"
 
     secrets:
       db_user: ${{ secrets.DB_USER }}

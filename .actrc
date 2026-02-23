@@ -8,4 +8,8 @@
 --container-architecture linux/amd64
 
 # Verbose output for debugging (remove if too noisy)
---verbose
+#--verbose
+
+# Shared Docker network so the act runner and manually started containers
+# (e.g. testdb) can communicate by container name.
+--network act_network
