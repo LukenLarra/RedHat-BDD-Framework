@@ -13,80 +13,52 @@ permissions:
   pull-requests: write
 
 jobs:
-  setup-deps:
+  bdd-tests:
     runs-on: ubuntu-latest
 
-    outputs:
-      pip_cache_key: ${{ steps.keys.outputs.pip_cache_key }}
-      npm_cache_key: ${{ steps.keys.outputs.npm_cache_key }}
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: movies_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compute cache keys
-        id: keys
-        run: |
-          PIP_KEY="pip-${{ runner.os }}-3.10-${{ hashFiles('**/requirements.txt') }}"
-          NPM_KEY="npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}"
-          echo "pip_cache_key=$PIP_KEY" >> $GITHUB_OUTPUT
-          echo "npm_cache_key=$NPM_KEY" >> $GITHUB_OUTPUT
-
+      # ── 1. Set up your runtime ──────────────────────────────────────────────
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
-      - name: Restore Python virtualenv cache
-        id: pip-cache
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ steps.keys.outputs.pip_cache_key }}
-
-      - name: Create virtualenv and install Python dependencies
-        if: steps.pip-cache.outputs.cache-hit != 'true'
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
-          .venv/bin/pip install -r backend/requirements.txt
-          .venv/bin/pip install -r tests/requirements.txt
 
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Restore node_modules cache
-        id: npm-cache
-        uses: actions/cache@v4
-        with:
-          path: frontend/node_modules
-          key: ${{ steps.keys.outputs.npm_cache_key }}
+      # ── 2. Install YOUR project dependencies ───────────────────────────────
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
 
       - name: Install frontend dependencies
-        if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm install
         working-directory: frontend
 
-  bdd-tests:
-    needs: setup-deps
-    uses: ./.github/workflows/bdd-tests.yml
-    with:
-      service: "movies-api"
-
-      cache_key: ${{ needs.setup-deps.outputs.pip_cache_key }}
-      cache_path: ".venv"
-      secondary_cache_key: ${{ needs.setup-deps.outputs.npm_cache_key }}
-      secondary_cache_path: "frontend/node_modules"
-
-      db_enabled: true
-      db_image: "postgres:15-alpine"
-      db_name: "movies_db"
-      db_port: "5432"
-      database_url: "postgresql://postgres:postgres@localhost:5432/movies_db"
-
-    secrets:
-      db_user: ${{ secrets.DB_USER }}
-      db_password: ${{ secrets.DB_PASSWORD }}
+      # ── 3. Call the framework — DATABASE_URL is inherited from the job env ──
+      - name: Run BDD Framework
+        uses: ./ #LukenLarra/RedHat-BDD-Framework@main
+        with:
+          service: "movies-api"

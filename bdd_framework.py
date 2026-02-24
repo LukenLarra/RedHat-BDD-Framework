@@ -45,7 +45,7 @@ class BDDFramework:
         self.config = self._load_config()
         self._validate_config()
         self.processes: Dict[str, subprocess.Popen] = {}
-        self.root_path = Path(__file__).parent.absolute()
+        self.root_path = Path(self.config_path).resolve().parent
 
         # Registrar manejadores de señales para cleanup
         signal.signal(signal.SIGINT, self._signal_handler)
