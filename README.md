@@ -157,10 +157,6 @@ jobs:
   bdd-tests:
     needs: setup-deps
     uses: ./.github/workflows/bdd-tests.yml
-    permissions:
-      contents: read
-      checks: write
-      pull-requests: write
     with:
       service: "my-service"
       bdd_config: "framework.yml"

@@ -10,9 +10,8 @@ on:
     inputs:
       service:
         description: "Service name used for artifact naming"
-        required: false
+        required: true
         type: string
-        default: "bdd-framework"
       artifacts_log_dir:
         description: "Directory where test reports are written (relative to reports/)"
         required: false
@@ -53,29 +52,24 @@ on:
 
       db_enabled:
         description: "Whether to start a database container"
-        required: false
+        required: true
         type: boolean
-        default: true
       db_image:
-        description: "Docker image for the database (e.g. postgres:15-alpine, mysql:8, mongo:7)"
+        description: "Docker image for the database. Required when db_enabled is true."
         required: false
         type: string
-        default: "postgres:15-alpine"
       db_name:
-        description: "Database name to create"
+        description: "Database name to create. Required when db_enabled is true."
         required: false
         type: string
-        default: "app_db"
       db_port:
-        description: "Port to expose the database container on"
+        description: "Port to expose the database container on. Required when db_enabled is true."
         required: false
         type: string
-        default: "5432"
       database_url:
-        description: "Full connection string injected as DATABASE_URL environment variable"
+        description: "Full connection string injected as DATABASE_URL environment variable. Required when db_enabled is true."
         required: false
         type: string
-        default: ""
 
     secrets:
       db_user:
