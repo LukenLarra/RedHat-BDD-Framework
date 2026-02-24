@@ -178,11 +178,13 @@ jobs:
       db_image: "postgres:15-alpine" # or mysql:8, mongo:7, etc.
       db_name: "my_db"
       db_port: "5432"
-      database_url: "<full connection string for your DATABASE_URL env var>"
+      database_url: "postgresql://user:pass@localhost:5432/my_db"
     secrets:
       db_user: ${{ secrets.DB_USER }}
       db_password: ${{ secrets.DB_PASSWORD }}
 ```
+
+> **Tip:** Always use `localhost` as the DB host in `database_url`. When running locally with `act`, the reusable workflow automatically rewrites `localhost` to `testdb` to match Docker's internal network — you don't need to configure anything extra.
 
 > **Tip:** If your project has a second set of dependencies to cache (e.g. a frontend alongside a backend), expose a second cache key from `setup-deps` and pass it via `secondary_cache_key` / `secondary_cache_path`.
 

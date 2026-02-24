@@ -112,6 +112,12 @@ jobs:
         if: inputs.python_venv_path != ''
         run: echo "$GITHUB_WORKSPACE/${{ inputs.python_venv_path }}/bin" >> $GITHUB_PATH
 
+      - name: Adapt DATABASE_URL for act (localhost → testdb)
+        if: inputs.db_enabled && env.ACT != ''
+        run: |
+          ADAPTED_URL=$(echo "$DATABASE_URL" | sed 's/@localhost:/@testdb:/')
+          echo "DATABASE_URL=$ADAPTED_URL" >> $GITHUB_ENV
+
       - name: Start database container
         if: inputs.db_enabled
         env:

@@ -85,7 +85,7 @@ jobs:
       db_image: "postgres:15-alpine"
       db_name: "movies_db"
       db_port: "5432"
-      database_url: "postgresql://postgres:postgres@testdb:5432/movies_db"
+      database_url: "postgresql://postgres:postgres@localhost:5432/movies_db"
 
     secrets:
       db_user: ${{ secrets.DB_USER }}
