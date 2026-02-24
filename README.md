@@ -117,6 +117,11 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   setup-deps:
     runs-on: ubuntu-latest
