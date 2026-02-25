@@ -45,6 +45,8 @@ python bdd_framework.py --config framework.yml
 
 ### Requirements
 
+> The requirements below apply to the **example project** included in this repository (Python backend + Node.js frontend + PostgreSQL). Your own project may have a completely different stack.
+
 - **Python 3.10+**
 - **Node.js 18+**
 - **PostgreSQL 12+** (to run locally)
@@ -52,7 +54,7 @@ python bdd_framework.py --config framework.yml
 
 ### Database Configuration
 
-The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
+The framework is database-agnostic — it does not connect to any database directly. Your application manages its own database connection using the `DATABASE_URL` environment variable (or whichever variable your stack uses). The example project in this repository uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
 
 #### Option 1: Local PostgreSQL (Development)
 
@@ -91,12 +93,12 @@ In GitHub Actions, declare the database as a job-level `services:` container —
 
 ### CI/CD Configuration
 
-The framework is distributed as a **composite action**: it runs as a `uses:` step inside your job, sharing the same runner and all installed packages.
+The framework is distributed as a **composite action**: it runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
 
 Declare your database as a [job-level `services:`](https://docs.github.com/en/actions/using-containerized-services) container — GitHub spins it up before the first step and tears it down when the job ends. Set `DATABASE_URL` as a job-level `env:` variable; the action and all BDD tests inherit it automatically.
 
 ```yaml
-# .github/workflows/ci.yml in YOUR repository
+# .github/workflows/ci_example.yml in YOUR repository
 jobs:
   bdd-tests:
     runs-on: ubuntu-latest
@@ -122,13 +124,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Set up your runtime (Python, Java, Node.js, Go, Ruby…)
-      - uses: actions/setup-python@v5
+      # 1. Set up YOUR runtime — use whatever your stack needs
+      - uses: actions/setup-python@v5 # Python
         with:
           python-version: "3.12"
+      # - uses: actions/setup-node@v4   # Node.js
+      # - uses: actions/setup-java@v4   # Java
+      # - uses: ruby/setup-ruby@v1      # Ruby
 
       # 2. Install YOUR project's dependencies
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt # or: npm install, bundle install, mvn dependency:resolve…
 
       # 3. Call the framework — DATABASE_URL is inherited from the job env
       - uses: LukenLarra/RedHat-BDD-Framework@main
@@ -146,6 +151,8 @@ The `framework.yml` file is the core of the configuration. Here, services, depen
 
 ### Configuration Example
 
+The `start_command` values are just shell commands — use whatever your stack requires (`bundle exec rails server`, `mvn spring-boot:run`, `node server.js`, etc.).
+
 ```yaml
 project:
   name: "RedHat-BDD-Framework"
@@ -155,13 +162,13 @@ services:
   api:
     enabled: true
     path: "backend"
-    start_command: "python app.py"
+    start_command: "python app.py" # or: bundle exec rails s, mvn spring-boot:run, node server.js…
     port: 8000
 
   web:
     enabled: true
     path: "frontend"
-    start_command: "node server.js"
+    start_command: "node server.js" # optional — omit this block if you have no frontend
     port: 3000
 
 tests:

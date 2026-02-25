@@ -25,12 +25,14 @@ runs:
     - name: Install BDD framework dependencies
       shell: bash
       run: |
-        pip install --quiet -r "${{ github.action_path }}/requirements.txt"
-        pip install --quiet -r "${{ github.action_path }}/tests/requirements.txt"
+        python -m venv "${{ github.action_path }}/.venv"
+        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/requirements.txt"
+        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/tests/requirements.txt"
 
     - name: Run BDD Framework
       shell: bash
-      run: python "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+      run: |
+        "${{ github.action_path }}/.venv/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
 
     - name: Check for test reports
       id: check_reports
