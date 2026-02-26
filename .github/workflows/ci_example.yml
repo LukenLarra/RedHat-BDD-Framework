@@ -54,7 +54,7 @@ jobs:
         run: pip install -r backend/requirements.txt
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
         working-directory: frontend
 
       # ── 3. Call the framework — DATABASE_URL is inherited from the job env ──

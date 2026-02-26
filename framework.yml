@@ -17,7 +17,7 @@ installation:
 
     - name: Install Web deps
       path: frontend
-      command: npm install
+      command: npm ci
       service: web
 
     - name: Install Test deps
