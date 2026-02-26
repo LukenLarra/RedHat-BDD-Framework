@@ -403,6 +403,8 @@ class BDDFramework:
             cmd_parts = command.split()
             if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
                 cmd_parts[0] = sys.executable
+            elif cmd_parts[0].lower() in ["pip", "pip3", "pip.exe"]:
+                cmd_parts = [sys.executable, "-m", "pip"] + cmd_parts[1:]
 
             try:
                 result = subprocess.run(
