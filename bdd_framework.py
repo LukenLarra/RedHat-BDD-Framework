@@ -310,6 +310,10 @@ class BDDFramework:
         # Parsear el comando completo (ej: "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
 
+        # Si el comando usa 'python', reemplazar por sys.executable para usar el Python correcto
+        if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
+            cmd_parts[0] = sys.executable
+
         # Modificar rutas relativas en el comando para que sean absolutas
         # Behave ejecutará desde tests/ pero los reportes deben ir a la raíz/reports
         for i, part in enumerate(cmd_parts):
