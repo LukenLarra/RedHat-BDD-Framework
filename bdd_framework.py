@@ -408,7 +408,14 @@ class BDDFramework:
             if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
                 cmd_parts[0] = sys.executable
             elif cmd_parts[0].lower() in ["pip", "pip3", "pip.exe"]:
+                # Redirigir pip al Python activo para instalar en el entorno correcto
                 cmd_parts = [sys.executable, "-m", "pip"] + cmd_parts[1:]
+            elif cmd_parts[0].lower() == "uv" and len(cmd_parts) > 2 and cmd_parts[1] == "pip":
+                # Para 'uv pip install', reemplazar --system por --python sys.executable
+                # para que instale en el mismo entorno Python que ejecutará los servicios
+                cmd_parts = [c for c in cmd_parts if c != "--system"]
+                if "--python" not in cmd_parts:
+                    cmd_parts = cmd_parts[:3] + ["--python", sys.executable] + cmd_parts[3:]
 
             try:
                 result = subprocess.run(

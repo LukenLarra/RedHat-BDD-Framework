@@ -25,14 +25,24 @@ runs:
     - name: Install BDD framework dependencies
       shell: bash
       run: |
-        python -m venv "${{ github.action_path }}/.venv"
-        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/requirements.txt"
-        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/tests/requirements.txt"
+        # Usar /tmp cuando la caché de uv también está en /tmp (mismo FS → hardlinks).
+        if [[ "${{ github.action_path }}" == /mnt/* ]]; then
+          BDD_VENV=/tmp/bdd-framework-venv
+        else
+          BDD_VENV="${{ github.action_path }}/.venv"
+        fi
+        echo "BDD_VENV_PATH=${BDD_VENV}" >> "$GITHUB_ENV"
+        command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet
+        uv venv "${BDD_VENV}"
+        uv pip install --quiet \
+          --python "${BDD_VENV}/bin/python" \
+          -r "${{ github.action_path }}/requirements.txt" \
+          -r "${{ github.action_path }}/tests/requirements.txt"
 
     - name: Run BDD Framework
       shell: bash
       run: |
-        "${{ github.action_path }}/.venv/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+        "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
 
     - name: Check for test reports
       id: check_reports

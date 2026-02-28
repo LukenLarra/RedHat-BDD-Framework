@@ -4,6 +4,9 @@
 # Use a larger image to match GitHub Actions environment more closely
 --platform ubuntu-latest=catthehacker/ubuntu:act-latest
 
+# Offline mode: evita pull de imágenes Docker ya descargadas, eliminando delays de red
+--action-offline-mode
+
 # Set container architecture
 --container-architecture linux/amd64
 

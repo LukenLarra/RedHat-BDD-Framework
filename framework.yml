@@ -12,7 +12,7 @@ installation:
   steps:
     - name: Install API deps
       path: backend
-      command: pip install -r requirements.txt
+      command: uv pip install --system -r requirements.txt
       service: api
 
     - name: Install Web deps
@@ -22,7 +22,7 @@ installation:
 
     - name: Install Test deps
       path: tests
-      command: pip install -r requirements.txt
+      command: uv pip install --system -r requirements.txt
 
 # Services Configuration
 # Define any type of service (api, web, database, cache, worker, etc.)
@@ -80,4 +80,4 @@ general:
   stop_on_test_failure: true
   cleanup_on_exit: true
   log_level: "INFO"
-  startup_delay: 5
+  startup_delay: 1
