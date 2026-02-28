@@ -45,7 +45,7 @@ class BDDFramework:
         self.config = self._load_config()
         self._validate_config()
         self.processes: Dict[str, subprocess.Popen] = {}
-        self.root_path = Path(__file__).parent.absolute()
+        self.root_path = Path(self.config_path).resolve().parent
 
         # Registrar manejadores de señales para cleanup
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -106,8 +106,7 @@ class BDDFramework:
 
         service_path = self.root_path / service_config["path"]
         start_command = service_config["start_command"]
-        env = os.environ.copy()
-        env.update(service_config.get("env", {}))
+        env = {**service_config.get("env", {}), **os.environ}
 
         # Configurar encoding UTF-8 para Python en Windows
         if sys.platform == "win32":
@@ -311,6 +310,10 @@ class BDDFramework:
         # Parsear el comando completo (ej: "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
 
+        # Si el comando usa 'python', reemplazar por sys.executable para usar el Python correcto
+        if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
+            cmd_parts[0] = sys.executable
+
         # Modificar rutas relativas en el comando para que sean absolutas
         # Behave ejecutará desde tests/ pero los reportes deben ir a la raíz/reports
         for i, part in enumerate(cmd_parts):
@@ -328,8 +331,7 @@ class BDDFramework:
             cmd_parts.extend(extra_args)
 
         # Preparar entorno para tests
-        env = os.environ.copy()
-        env.update(tests_config.get("env", {}))
+        env = {**tests_config.get("env", {}), **os.environ}
 
         try:
             # Ejecutar tests en el mismo proceso para ver output en tiempo real
@@ -375,6 +377,56 @@ class BDDFramework:
 
         self._log("INFO", "✅ Cleanup completado")
 
+    def _run_installation_steps(self) -> bool:
+        """
+        Ejecutar los pasos de instalación definidos en la sección 'installation' del config.
+
+        Returns:
+            True si todos los pasos se ejecutaron correctamente, False si alguno falló
+        """
+        installation = self.config.get("installation", {})
+        steps = installation.get("steps", [])
+
+        if not steps:
+            return True
+
+        self._log("INFO", "📦 Ejecutando pasos de instalación...")
+
+        for step in steps:
+            name = step.get("name", "(sin nombre)")
+            path = step.get("path", ".")
+            command = step.get("command", "")
+
+            if not command:
+                self._log("WARNING", f"Paso '{name}' no tiene comando definido, saltando")
+                continue
+
+            step_path = self.root_path / path
+            self._log("INFO", f"  → {name}: {command}")
+
+            cmd_parts = command.split()
+            if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
+                cmd_parts[0] = sys.executable
+            elif cmd_parts[0].lower() in ["pip", "pip3", "pip.exe"]:
+                cmd_parts = [sys.executable, "-m", "pip"] + cmd_parts[1:]
+
+            try:
+                result = subprocess.run(
+                    cmd_parts,
+                    cwd=str(step_path),
+                    env=os.environ.copy(),
+                )
+                if result.returncode != 0:
+                    self._log("ERROR", f"❌ Paso '{name}' falló con código {result.returncode}")
+                    return False
+                self._log("INFO", f"  ✅ {name} completado")
+            except Exception as e:
+                self._log("ERROR", f"Error ejecutando paso '{name}': {e}")
+                return False
+
+        self._log("INFO", "✅ Instalación completada")
+        return True
+
     def run(self, extra_test_args: Optional[List[str]] = None) -> int:
         """
         Ejecutar el framework completo
@@ -392,7 +444,12 @@ class BDDFramework:
         print(f"{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}\n")
 
         try:
-            # 1. Iniciar servicios en orden (respetando dependencias)
+            # 1. Ejecutar pasos de instalación
+            if not self._run_installation_steps():
+                self._log("ERROR", "La instalación de dependencias falló")
+                return 1
+
+            # 2. Iniciar servicios en orden (respetando dependencias)
             services = self.config.get("services", {})
             service_order = self._resolve_service_order()
 
@@ -405,14 +462,14 @@ class BDDFramework:
                     self.cleanup()
                     return 1
 
-            # 2. Ejecutar Tests
+            # 3. Ejecutar Tests
             test_result = self._run_tests(extra_test_args)
 
-            # 3. Cleanup
+            # 4. Cleanup
             if self.config.get("general", {}).get("cleanup_on_exit", True):
                 self.cleanup()
 
-            # 4. Resultado final
+            # 5. Resultado final
             print(f"\n{Colors.BOLD}{Colors.HEADER}{'=' * 60}{Colors.ENDC}")
             if test_result == 0:
                 print(

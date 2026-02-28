@@ -35,7 +35,7 @@ act-list: ## List available GitHub Actions workflows (act -l)
 
 act-run: ## Run GitHub Actions workflow locally on push event (act push)
 	@echo "Running workflow locally with act..."
-	@act push --verbose
+	@act push
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

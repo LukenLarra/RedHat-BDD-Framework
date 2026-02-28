@@ -45,6 +45,8 @@ python bdd_framework.py --config framework.yml
 
 ### Requirements
 
+> The requirements below apply to the **example project** included in this repository (Python backend + Node.js frontend + PostgreSQL). Your own project may have a completely different stack.
+
 - **Python 3.10+**
 - **Node.js 18+**
 - **PostgreSQL 12+** (to run locally)
@@ -52,7 +54,7 @@ python bdd_framework.py --config framework.yml
 
 ### Database Configuration
 
-The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
+The framework is database-agnostic — it does not connect to any database directly. Your application manages its own database connection using the `DATABASE_URL` environment variable (or whichever variable your stack uses). The example project in this repository uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options to run it:
 
 #### Option 1: Local PostgreSQL (Development)
 
@@ -87,20 +89,59 @@ The framework uses **PostgreSQL** with **SQLAlchemy ORM**. There are two options
 
 #### Option 2: GitHub Actions (CI/CD)
 
-In GitHub Actions, the framework uses an **ephemeral PostgreSQL service** that:
+In GitHub Actions, declare the database as a job-level `services:` container — GitHub manages its full lifecycle. Set `DATABASE_URL` as a job-level `env:` and the action will pick it up automatically. See the [CI/CD Configuration](#cicd-configuration) section below.
 
-- Is created automatically at the start of the workflow
-- Is configured with default credentials
-- Is destroyed at the end of execution
-- **Requires no additional configuration**
+### CI/CD Configuration
 
-See `.github/workflows/bdd-tests.yml` for details.
+The framework is distributed as a **composite action**: it runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
 
-### Framework Configuration
+Declare your database as a [job-level `services:`](https://docs.github.com/en/actions/using-containerized-services) container — GitHub spins it up before the first step and tears it down when the job ends. Set `DATABASE_URL` as a job-level `env:` variable; the action and all BDD tests inherit it automatically.
 
-1. Ensure you have a properly configured `framework.yml` file.
-2. Define services, dependencies, and tests in the configuration file.
-3. Verify that `DATABASE_URL` points to your PostgreSQL instance.
+```yaml
+# .github/workflows/ci_example.yml in YOUR repository
+jobs:
+  bdd-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres: # or mysql, mongo, redis…
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: my_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/my_db"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Set up YOUR runtime — use whatever your stack needs
+      - uses: actions/setup-python@v5 # Python
+        with:
+          python-version: "3.12"
+      # - uses: actions/setup-node@v4   # Node.js
+      # - uses: actions/setup-java@v4   # Java
+      # - uses: ruby/setup-ruby@v1      # Ruby
+
+      # 2. Install YOUR project's dependencies
+      - run: pip install -r requirements.txt # or: npm install, bundle install, mvn dependency:resolve…
+
+      # 3. Call the framework — DATABASE_URL is inherited from the job env
+      - uses: LukenLarra/RedHat-BDD-Framework@main
+        with:
+          service: "my-service"
+```
+
+> **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
 
 ---
 
@@ -109,6 +150,8 @@ See `.github/workflows/bdd-tests.yml` for details.
 The `framework.yml` file is the core of the configuration. Here, services, dependencies, and tests are defined.
 
 ### Configuration Example
+
+The `start_command` values are just shell commands — use whatever your stack requires (`bundle exec rails server`, `mvn spring-boot:run`, `node server.js`, etc.).
 
 ```yaml
 project:
@@ -119,13 +162,13 @@ services:
   api:
     enabled: true
     path: "backend"
-    start_command: "python app.py"
+    start_command: "python app.py" # or: bundle exec rails s, mvn spring-boot:run, node server.js…
     port: 8000
 
   web:
     enabled: true
     path: "frontend"
-    start_command: "node server.js"
+    start_command: "node server.js" # optional — omit this block if you have no frontend
     port: 3000
 
 tests:
@@ -184,21 +227,6 @@ python bdd_framework.py --config framework.yml
 - **Startup delay:** 5 seconds to ensure service stability
 - **Stop on failure:** Tests stop at the first failure
 
-### CI/CD
-
-The framework includes a preconfigured GitHub Actions workflow:
-
-```yaml
-jobs:
-  bdd_tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run BDD Framework
-        run: python bdd_framework.py --config framework.yml
-```
-
 ### Testing CI/CD Locally with act
 
 You can run the GitHub Actions workflow locally using [act](https://github.com/nektos/act), which allows you to test CI/CD changes before pushing to GitHub.
@@ -228,9 +256,9 @@ act push
 
 When you run `act push`:
 
-1. act automatically pulls the `postgres:15-alpine` image from Docker Hub
-2. Creates and starts the PostgreSQL container with the correct configuration
-3. Executes all workflow steps (setup Python, Node.js, install dependencies, run tests)
+1. act pulls the required Docker images (runner + any database image defined in your workflow's `services:` block)
+2. Creates and starts the database container using the `services:` configuration in your workflow file
+3. Executes all workflow steps (install dependencies, run tests)
 4. Generates test reports in `reports/junit/`
 5. Cleans up containers when done
 

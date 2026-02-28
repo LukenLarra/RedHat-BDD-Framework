@@ -1,0 +1,64 @@
+name: CI_Example
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  bdd-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: movies_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 1. Set up your runtime ──────────────────────────────────────────────
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # ── 2. Install YOUR project dependencies ───────────────────────────────
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+
+      # ── 3. Call the framework — DATABASE_URL is inherited from the job env ──
+      - name: Run BDD Framework
+        uses: ./ #LukenLarra/RedHat-BDD-Framework@main
+        with:
+          service: "movies-api"

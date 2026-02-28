@@ -8,4 +8,4 @@
 --container-architecture linux/amd64
 
 # Verbose output for debugging (remove if too noisy)
---verbose
+#--verbose

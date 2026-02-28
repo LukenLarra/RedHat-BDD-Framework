@@ -1,0 +1,65 @@
+name: "RedHat BDD Framework"
+description: >
+  Stack-agnostic BDD test framework. Set up your runtime, install your
+  project dependencies, and declare your database as a job-level service.
+  Then call this action — it installs its own framework dependencies,
+  runs the BDD tests, and publishes the results.
+  DATABASE_URL is read from the job environment automatically.
+
+inputs:
+  service:
+    description: "Service name used for artifact naming"
+    required: true
+  bdd_config:
+    description: "Path to the BDD framework config file (relative to caller workspace)"
+    required: false
+    default: "framework.yml"
+  artifacts_log_dir:
+    description: "Directory where JUnit reports are written (relative to reports/)"
+    required: false
+    default: "junit"
+
+runs:
+  using: composite
+  steps:
+    - name: Install BDD framework dependencies
+      shell: bash
+      run: |
+        python -m venv "${{ github.action_path }}/.venv"
+        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/requirements.txt"
+        "${{ github.action_path }}/.venv/bin/pip" install --quiet -r "${{ github.action_path }}/tests/requirements.txt"
+
+    - name: Run BDD Framework
+      shell: bash
+      run: |
+        "${{ github.action_path }}/.venv/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+
+    - name: Check for test reports
+      id: check_reports
+      if: always()
+      shell: bash
+      run: |
+        if [ -d "reports/${{ inputs.artifacts_log_dir }}" ] && \
+           [ -n "$(ls -A reports/${{ inputs.artifacts_log_dir }}/*.xml 2>/dev/null)" ]; then
+          echo "reports_exist=true" >> $GITHUB_OUTPUT
+          echo "✅ Test reports found"
+          ls -lh "reports/${{ inputs.artifacts_log_dir }}/"
+        else
+          echo "reports_exist=false" >> $GITHUB_OUTPUT
+          echo "⚠️  No test reports found in reports/${{ inputs.artifacts_log_dir }}"
+        fi
+
+    - name: Upload test reports
+      if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
+      uses: actions/upload-artifact@v4
+      with:
+        name: bdd-test-reports-${{ inputs.service }}
+        path: reports/${{ inputs.artifacts_log_dir }}
+        retention-days: 30
+        if-no-files-found: ignore
+
+    - name: Publish test results
+      if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      with:
+        files: reports/${{ inputs.artifacts_log_dir }}/*.xml
