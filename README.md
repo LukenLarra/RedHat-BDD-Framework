@@ -259,9 +259,7 @@ When you run `act push`:
 1. act pulls the required Docker images (runner + any database image defined in your workflow's `services:` block).
 2. Creates and starts the database container using the `services:` configuration in your workflow file.
 3. **Caches dependencies**: act uses its built-in cache server to restore `uv` and `npm` dependencies, significantly reducing installation time on subsequent runs.
-4. **Optimized execution**: The framework now:
-   - Uses hardlinks for `uv` dependencies in `/tmp`, avoiding redundant file copies.
-   - Skips the fixed 5-second startup delay, relying on health checks to ensure services are ready.
+4. **Optimized execution**: The framework now uses hardlinks for `uv` dependencies in `/tmp`, avoiding redundant file copies.
 5. Executes the workflow steps as defined in your GitHub Actions file.
 
 #### Important notes
