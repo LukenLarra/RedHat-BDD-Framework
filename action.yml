@@ -25,7 +25,6 @@ runs:
     - name: Install BDD framework dependencies
       shell: bash
       run: |
-        # Usar /tmp cuando la caché de uv también está en /tmp (mismo FS → hardlinks).
         if [[ "${{ github.action_path }}" == /mnt/* ]]; then
           BDD_VENV=/tmp/bdd-framework-venv
         else

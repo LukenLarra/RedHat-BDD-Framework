@@ -7,7 +7,7 @@ UV := uv
 # Rules
 .PHONY: install-uv install-backend install-tests run-backend run-tests clean act-list act-run act-help
 
-install-uv: ## Install uv package manager (required before install-backend/install-tests)
+install-uv: ## Install uv package manager
 	@echo "Installing uv..."
 	@pip install uv
 
