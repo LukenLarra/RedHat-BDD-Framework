@@ -7,5 +7,10 @@
 # Set container architecture
 --container-architecture linux/amd64
 
+# Bind-mount the current working directory into the container as /github/workspace.
+# This ensures files written by the container (e.g. JUnit XML reports under
+# reports/junit/) are persisted on the host after act finishes.
+--bind
+
 # Verbose output for debugging (remove if too noisy)
 #--verbose
