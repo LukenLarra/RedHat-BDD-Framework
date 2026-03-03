@@ -2,18 +2,22 @@
 
 # Variables
 PYTHON := python
-PIP := pip
+UV := uv
 
 # Rules
-.PHONY: install-backend install-tests run-backend run-tests clean act-list act-run act-help
+.PHONY: install-uv install-backend install-tests run-backend run-tests clean act-list act-run act-help
+
+install-uv: ## Install uv package manager
+	@echo "Installing uv..."
+	@pip install uv
 
 install-backend: ## Install backend Python dependencies from backend/requirements.txt
 	@echo "Installing backend dependencies..."
-	@$(PIP) install -r backend/requirements.txt
+	@$(UV) pip install --system -r backend/requirements.txt
 
 install-tests: ## Install test dependencies from tests/requirements.txt
 	@echo "Installing test dependencies..."
-	@$(PIP) install -r tests/requirements.txt
+	@$(UV) pip install --system -r tests/requirements.txt
 
 run-backend: ## Start the backend server (backend/app.py)
 	@echo "Running the backend..."

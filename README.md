@@ -256,11 +256,14 @@ act push
 
 When you run `act push`:
 
-1. act pulls the required Docker images (runner + any database image defined in your workflow's `services:` block)
-2. Creates and starts the database container using the `services:` configuration in your workflow file
-3. Executes all workflow steps (install dependencies, run tests)
-4. Generates test reports in `reports/junit/`
-5. Cleans up containers when done
+1. act pulls the required Docker images (runner + any database image defined in your workflow's `services:` block).
+2. Creates and starts the database container using the `services:` configuration in your workflow file.
+3. **Caches dependencies**: act uses its built-in cache server to restore `uv` and `npm` dependencies, significantly reducing installation time on subsequent runs.
+
+   > **Note:** The built-in cache server in act is only briefly mentioned in the [official man page](https://man.archlinux.org/man/extra/act/act.1.en), and there is currently no dedicated documentation available for its usage. However, this functionality is available and works in act.
+
+4. **Optimized execution**: The framework now uses hardlinks for `uv` dependencies in `/tmp`, avoiding redundant file copies.
+5. Executes the workflow steps as defined in your GitHub Actions file.
 
 #### Important notes
 

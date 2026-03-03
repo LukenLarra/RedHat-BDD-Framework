@@ -4,6 +4,9 @@
 # Use a larger image to match GitHub Actions environment more closely
 --platform ubuntu-latest=catthehacker/ubuntu:act-latest
 
+# Offline mode: avoid network calls during dependency installation
+--action-offline-mode
+
 # Set container architecture
 --container-architecture linux/amd64
 

@@ -405,10 +405,24 @@ class BDDFramework:
             self._log("INFO", f"  → {name}: {command}")
 
             cmd_parts = command.split()
+            # If command starts with 'python', use the current Python executable
+            # Why: Ensures the script runs with the same Python interpreter as the framework
             if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
                 cmd_parts[0] = sys.executable
+            # If command starts with 'pip', use 'python -m pip' for compatibility
+            # Why: Guarantees pip runs in the correct virtual environment
             elif cmd_parts[0].lower() in ["pip", "pip3", "pip.exe"]:
                 cmd_parts = [sys.executable, "-m", "pip"] + cmd_parts[1:]
+            # If command uses 'uv pip', adjust arguments for correct Python usage
+            # Why: Ensures 'uv pip' uses the right Python interpreter and avoids system-wide installations
+            elif cmd_parts[0].lower() == "uv" and len(cmd_parts) > 2 and cmd_parts[1] == "pip":
+                cmd_parts = [
+                    c for c in cmd_parts if c != "--system"
+                ]  # Remove '--system' if present to prevent global installs
+                if "--python" not in cmd_parts:
+                    cmd_parts = (
+                        cmd_parts[:3] + ["--python", sys.executable] + cmd_parts[3:]
+                    )  # Add '--python' argument if missing to specify interpreter
 
             try:
                 result = subprocess.run(
