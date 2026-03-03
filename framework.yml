@@ -6,24 +6,6 @@ project:
   name: "RedHat-BDD-Framework"
   version: "1.0.0"
 
-# Installation Configuration
-# Sequential installation steps with explicit order
-installation:
-  steps:
-    - name: Install API deps
-      path: backend
-      command: uv pip install --system -r requirements.txt
-      service: api
-
-    - name: Install Web deps
-      path: frontend
-      command: npm ci
-      service: web
-
-    - name: Install Test deps
-      path: tests
-      command: uv pip install --system -r requirements.txt
-
 # Services Configuration
 # Define any type of service (api, web, database, cache, worker, etc.)
 services:
