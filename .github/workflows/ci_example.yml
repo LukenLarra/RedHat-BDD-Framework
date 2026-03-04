@@ -65,7 +65,44 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      # ── 3. Call the framework — DATABASE_URL is inherited from the job env ──
+      # ── 3. Start YOUR application services ──────────────────────────────────
+      # Start services from your own code here. The framework does not manage
+      # services — it only runs behave. Use &, Docker Compose, or any other
+      # mechanism that fits your stack.
+      - name: Start backend
+        run: python backend/app.py &
+        env:
+          API_HOST: "0.0.0.0"
+          API_PORT: "8000"
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Wait for backend to be ready
+        run: |
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo "Backend ready" && break
+            echo "  attempt $i/30..."
+            sleep 1
+          done
+
+      - name: Start frontend
+        run: node server.js &
+        working-directory: frontend
+        env:
+          PORT: "3000"
+          NODE_ENV: "development"
+          API_URL: "http://localhost:8000"
+
+      - name: Wait for frontend to be ready
+        run: |
+          echo "Waiting for frontend..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 && echo "Frontend ready" && break
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+
+      # ── 4. Call the framework — DATABASE_URL is inherited from the job env ──
       - name: Run BDD Framework
         uses: ./ #LukenLarra/RedHat-BDD-Framework@main
         with:

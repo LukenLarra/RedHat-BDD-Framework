@@ -1,69 +1,17 @@
-# Stack-Agnostic Framework Configuration
-# ========================================
+# Stack-Agnostic BDD Framework Configuration
+# ============================================
+#
+# This file configures ONLY the test execution.
+# Your services (backend, frontend, etc.) must be started in your CI workflow
+# before calling this framework — see ci_example.yml for a complete reference.
 
 # Project Metadata
 project:
   name: "RedHat-BDD-Framework"
-  version: "1.0.0"
-
-# Installation Configuration
-# Sequential installation steps with explicit order
-installation:
-  steps:
-    - name: Install API deps
-      path: backend
-      command: uv pip install --system -r requirements.txt
-      service: api
-
-    - name: Install Web deps
-      path: frontend
-      command: npm ci
-      service: web
-
-    - name: Install Test deps
-      path: tests
-      command: uv pip install --system -r requirements.txt
-
-# Services Configuration
-# Define any type of service (api, web, database, cache, worker, etc.)
-services:
-  api:
-    enabled: true
-    path: "backend"
-    start_command: "python app.py"
-    host: "0.0.0.0"
-    port: 8000
-    health_check:
-      enabled: true
-      url: "http://localhost:8000/health"
-      timeout: 30
-      interval: 1
-    env:
-      API_HOST: "0.0.0.0"
-      API_PORT: "8000"
-      API_RELOAD: "1"
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
-    dependencies: []
-
-  web:
-    enabled: true
-    path: "frontend"
-    start_command: "node server.js"
-    port: 3000
-    health_check:
-      enabled: true
-      url: "http://localhost:3000"
-      timeout: 60
-      interval: 2
-    env:
-      PORT: "3000"
-      NODE_ENV: "development"
-      API_URL: "http://localhost:8000"
-    dependencies: ["api"]
+  version: "2.0.0"
 
 # Test Configuration
-# BDD tests are written in Python/Behave, but they test applications in ANY language
-# The framework orchestrates services via commands - it doesn't care about implementation details
+# Adapt 'command' and 'env' to match your project's test setup.
 tests:
   enabled: true
   path: "tests"
@@ -74,10 +22,3 @@ tests:
     environment: "tests/features/environment.py"
   env:
     API_URL: "http://localhost:8000"
-
-# General Configuration
-general:
-  stop_on_test_failure: true
-  cleanup_on_exit: true
-  log_level: "INFO"
-  startup_delay: 1
