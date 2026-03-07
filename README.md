@@ -143,6 +143,41 @@ jobs:
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
 
+> **When NOT to use `services:`:** If a container needs custom CLI arguments, a non-default entrypoint, or wait logic beyond the built-in health-check flags, start it as a step instead.
+>
+> ```yaml
+> # services: — standard image, no custom args, built-in health check is enough
+> services:
+>   redis:
+>     image: redis:7-alpine
+>     ports: ["6379:6379"]
+>     options: >-
+>       --health-cmd "redis-cli ping"
+>       --health-interval 10s
+>       --health-timeout 5s
+>       --health-retries 5
+>
+> steps:
+>   # would NOT work in services: — needs a custom server sub-command and
+>   # its readiness endpoint is not a simple TCP check.
+>   - name: Start MinIO
+>     run: |
+>       docker run -d --name minio \
+>         -p 9000:9000 -p 9001:9001 \
+>         -e MINIO_ROOT_USER=minioadmin \
+>         -e MINIO_ROOT_PASSWORD=minioadmin \
+>         quay.io/minio/minio server /data --console-address ":9001"
+>
+>   - name: Wait for MinIO
+>     run: |
+>       for i in $(seq 1 30); do
+>         curl -sf http://localhost:9000/minio/health/live && echo "MinIO ready" && break
+>         echo "  attempt $i/30..."; sleep 2
+>       done
+> ```
+>
+> The same rule applies to your own application processes (`python app.py &`, `node server.js &`): start them as steps with an explicit wait loop so you control the readiness check.
+
 ---
 
 ## 🔧 **Framework Configuration**
