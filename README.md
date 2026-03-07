@@ -139,6 +139,9 @@ jobs:
       - uses: LukenLarra/RedHat-BDD-Framework@main
         with:
           service: "my-service"
+          # bdd_config: "framework.yml"           # optional, default: framework.yml
+          # artifacts_log_dir: "junit"            # optional, default: junit
+          # test_requirements: "tests/requirements.txt"  # optional, see below
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
@@ -177,6 +180,12 @@ jobs:
 > ```
 >
 > The same rule applies to your own application processes (`python app.py &`, `node server.js &`): start them as steps with an explicit wait loop so you control the readiness check.
+
+### Extra dependencies for step files (`test_requirements`)
+
+The framework installs its own dependencies (`behave`, `requests`, `PyYAML`) in an **isolated virtual environment**. Behave runs inside that venv, so any `import` in your step files must resolve there.
+
+If your step files import packages that are not bundled with the framework, provide a `requirements.txt` via the `test_requirements` input. The framework will install those packages into its venv before running the tests.
 
 ---
 
