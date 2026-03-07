@@ -171,9 +171,14 @@ class BDDFramework:
         # Parse the full command (e.g., "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
 
-        # If the command uses 'python', replace with sys.executable to use the correct Python
+        # Resolve the interpreter/entrypoint to the framework's virtual environment
+        # so that python, python3 and behave are always found regardless of PATH.
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
+        elif cmd_parts[0].lower() == "behave":
+            # Replace `behave` with `python -m behave` so it is resolved from
+            # the framework venv instead of relying on the runner's system PATH.
+            cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
 
         # Make relative paths in the command absolute
         # Behave runs from tests/, but reports should go to root/reports
