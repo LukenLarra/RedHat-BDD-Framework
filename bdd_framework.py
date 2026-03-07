@@ -196,8 +196,15 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        # Prepare environment for tests
-        env = {**tests_config.get("env", {}), **os.environ}
+        # Ensure the caller's project root is on PYTHONPATH so that step files
+        # can import project modules even when behave runs with cwd set to the tests sub-directory.
+        existing_pythonpath = os.environ.get("PYTHONPATH", "")
+        root_pythonpath = (
+            f"{self.root_path}{os.pathsep}{existing_pythonpath}"
+            if existing_pythonpath
+            else str(self.root_path)
+        )
+        env = {**tests_config.get("env", {}), **os.environ, "PYTHONPATH": root_pythonpath}
 
         try:
             # Run tests in the same process to see real-time output
