@@ -196,12 +196,9 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        # Ensure the caller's project root is on PYTHONPATH so that step files
-        # can import project modules even when behave runs with cwd set to the tests sub-directory.
-        #
-        # Relative PYTHONPATH entries declared in the job env are relative to GITHUB_WORKSPACE,
-        # but the subprocess cwd is tests.path so Python would resolve them against the wrong directory.
-        # Convert every relative entry to an absolute path anchored at root_path first.
+        # Adjust PYTHONPATH so that project modules are accessible
+        # even when behave is run from the tests subdirectory.
+        # Convert relative paths in PYTHONPATH to absolute paths based on root_path.
         existing_pythonpath = os.environ.get("PYTHONPATH", "")
         if existing_pythonpath:
             abs_entries = []

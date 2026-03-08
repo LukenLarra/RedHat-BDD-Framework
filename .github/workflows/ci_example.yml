@@ -16,18 +16,11 @@ jobs:
   bdd-tests:
     runs-on: ubuntu-latest
 
-    # ── services: block ─────────────────────────────────────────────────────
-    # Use services: ONLY for infrastructure containers whose image you use as-is
-    # (no custom entrypoint, no extra CLI arguments). GitHub provides built-in
-    # health-check flags (--health-cmd, --health-interval, --health-retries…)
-    # that are enough to wait for readiness.
-    #
-    # Rule of thumb:
-    #   YES services: → standard infrastructure (postgres, mysql, redis, kafka,
-    #                  pushgateway, rabbitmq…) with no custom startup commands.
-    #   NO services: → anything that needs custom CLI args, a non-default
-    #                  entrypoint, or a wait strategy beyond health-check flags.
-    #                  Start those as steps instead (see the MinIO pattern below).
+    # ── Services and containers ────────────────────────────────────────────
+    # Use the `services` block only for standard containers (e.g., postgres, redis)
+    # that do not require custom commands or special wait logic.
+    # For services that need custom arguments, use specific steps
+    # with `docker run` or appropriate scripts (see examples below).
     services:
       postgres:
         image: postgres:15-alpine
@@ -50,7 +43,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 1. Set up your runtime ──────────────────────────────────────────────
+      # ── 1. Set up your environment ────────────────────────────────────────
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
@@ -77,14 +70,9 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      # ── 3. Start YOUR application services ──────────────────────────────────
-      # Start services from your own code here. The framework does not manage
-      # services — it only runs behave. Use &, Docker Compose, or any other
-      # mechanism that fits your stack.
-      #
-      # For containerised third-party services that need custom startup args
-      # (custom command, entrypoint flags, special wait logic, etc.) use
-      # "docker run -d" here instead of the services: block.  Example (MinIO):
+      # ── 3. Start custom services ────────────────────────────────────────
+      # For services that require custom commands or wait logic,
+      # use specific steps instead of the `services` block. Example:
       #
       #   - name: Start MinIO
       #     run: |
@@ -133,7 +121,7 @@ jobs:
             sleep 2
           done
 
-      # ── 4. Call the framework — DATABASE_URL is inherited from the job env ──
+      # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
         uses: ./ #LukenLarra/RedHat-BDD-Framework@main
         with:

@@ -21,7 +21,7 @@ inputs:
   test_requirements:
     description: >
       Path to a requirements.txt with extra Python packages needed by the
-      caller's step files. Installed into the framework venv alongside behave and requests.
+      caller's step files. Installed into the framework venv.
       Leave empty if your steps only use the standard library or packages
       already bundled with the framework.
     required: false
