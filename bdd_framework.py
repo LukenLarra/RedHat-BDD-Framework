@@ -171,9 +171,14 @@ class BDDFramework:
         # Parse the full command (e.g., "python run_bdd_tests.py --no-capture")
         cmd_parts = command.split()
 
-        # If the command uses 'python', replace with sys.executable to use the correct Python
+        # Resolve the interpreter/entrypoint to the framework's virtual environment
+        # so that python, python3 and behave are always found regardless of PATH.
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
+        elif cmd_parts[0].lower() == "behave":
+            # Replace `behave` with `python -m behave` so it is resolved from
+            # the framework venv instead of relying on the runner's system PATH.
+            cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
 
         # Make relative paths in the command absolute
         # Behave runs from tests/, but reports should go to root/reports
@@ -191,8 +196,24 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        # Prepare environment for tests
-        env = {**tests_config.get("env", {}), **os.environ}
+        # Adjust PYTHONPATH so that project modules are accessible
+        # even when behave is run from the tests subdirectory.
+        # Convert relative paths in PYTHONPATH to absolute paths based on root_path.
+        existing_pythonpath = os.environ.get("PYTHONPATH", "")
+        if existing_pythonpath:
+            abs_entries = []
+            for entry in existing_pythonpath.split(os.pathsep):
+                p = Path(entry)
+                if not p.is_absolute():
+                    p = self.root_path / p
+                abs_entries.append(str(p))
+            existing_pythonpath = os.pathsep.join(abs_entries)
+        root_pythonpath = (
+            f"{self.root_path}{os.pathsep}{existing_pythonpath}"
+            if existing_pythonpath
+            else str(self.root_path)
+        )
+        env = {**tests_config.get("env", {}), **os.environ, "PYTHONPATH": root_pythonpath}
 
         try:
             # Run tests in the same process to see real-time output

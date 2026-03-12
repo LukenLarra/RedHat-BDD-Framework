@@ -18,6 +18,14 @@ inputs:
     description: "Directory where JUnit reports are written (relative to reports/)"
     required: false
     default: "junit"
+  test_requirements:
+    description: >
+      Path to a requirements.txt with extra Python packages needed by the
+      caller's step files. Installed into the framework venv.
+      Leave empty if your steps only use the standard library or packages
+      already bundled with the framework.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -37,6 +45,11 @@ runs:
           --python "${BDD_VENV}/bin/python" \
           -r "${{ github.action_path }}/requirements.txt" \
           -r "${{ github.action_path }}/tests/requirements.txt"
+        if [[ -n "${{ inputs.test_requirements }}" ]]; then
+          uv pip install --quiet \
+            --python "${BDD_VENV}/bin/python" \
+            -r "${{ inputs.test_requirements }}"
+        fi
 
     - name: Run BDD Framework
       shell: bash

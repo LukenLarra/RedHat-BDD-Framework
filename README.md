@@ -139,15 +139,93 @@ jobs:
       - uses: LukenLarra/RedHat-BDD-Framework@main
         with:
           service: "my-service"
+          # bdd_config: "framework.yml"           # optional, default: framework.yml
+          # artifacts_log_dir: "junit"            # optional, default: junit
+          # test_requirements: "tests/requirements.txt"  # optional, see below
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
+
+> **When NOT to use `services:`:** If a container needs custom CLI arguments, a non-default entrypoint, or wait logic beyond the built-in health-check flags, start it as a step instead.
+>
+> ```yaml
+> # services: — standard image, no custom args, built-in health check is enough
+> services:
+>   redis:
+>     image: redis:7-alpine
+>     ports: ["6379:6379"]
+>     options: >-
+>       --health-cmd "redis-cli ping"
+>       --health-interval 10s
+>       --health-timeout 5s
+>       --health-retries 5
+>
+> steps:
+>   # would NOT work in services: — needs a custom server sub-command and
+>   # its readiness endpoint is not a simple TCP check.
+>   - name: Start MinIO
+>     run: |
+>       docker run -d --name minio \
+>         -p 9000:9000 -p 9001:9001 \
+>         -e MINIO_ROOT_USER=minioadmin \
+>         -e MINIO_ROOT_PASSWORD=minioadmin \
+>         quay.io/minio/minio server /data --console-address ":9001"
+>
+>   - name: Wait for MinIO
+>     run: |
+>       for i in $(seq 1 30); do
+>         curl -sf http://localhost:9000/minio/health/live && echo "MinIO ready" && break
+>         echo "  attempt $i/30..."; sleep 2
+>       done
+> ```
+
+### Extra dependencies for step files (`test_requirements`)
+
+The framework installs its own dependencies (`behave`, `requests`, `PyYAML`) in an **isolated virtual environment**. Behave runs inside that venv, so any `import` in your step files must resolve there.
+
+If your step files import packages that are not bundled with the framework, provide a `requirements.txt` via the `test_requirements` input. The framework will install those packages into its venv before running the tests.
 
 ---
 
 ## 🔧 **Framework Configuration**
 
 The `framework.yml` file is the core of the configuration. Here, services, dependencies, and tests are defined.
+
+### Workflow and Configuration Requirements
+
+To use the framework in your own project, you must provide a `framework.yml` configuration file with the following keys:
+
+- `tests.path`: Path to your BDD tests directory.
+- `tests.command`: Command to execute your tests (e.g., `python run_bdd_tests.py ...`).
+- `tests.bdd.features`: Path to your `.feature` files.
+- `tests.bdd.steps`: Path to your step definitions (Python files).
+- `tests.bdd.environment`: Path to your `environment.py` file for Behave.
+- `tests.env`: Any environment variables required for your tests (e.g., `API_URL`, `DATABASE_URL`).
+
+In your CI workflow, you must:
+
+- Define global environment variables such as `DATABASE_URL` (or the variable your stack uses).
+- Ensure all paths in your configuration file exist and are accessible to the framework.
+- If your step files require additional dependencies, provide a `requirements.txt` and pass it as the `test_requirements` input to the framework.
+
+---
+
+### 📂 Required Users Project Structure
+
+The framework does not enforce a fixed directory structure, but the paths specified in your `framework.yml` must exist and be correct. For example:
+
+```
+tests/
+  features/
+    your_features.feature
+    steps/
+      your_steps.py
+    environment.py
+```
+
+You can customize the names and locations, but you must update the configuration file accordingly. If any path is missing, the framework will issue warnings and may fail to run your tests.
+
+---
 
 ### Configuration Example
 
@@ -176,6 +254,16 @@ tests:
   path: "tests"
   command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
 ```
+
+---
+
+### ⚠️ Framework Limitations
+
+- The framework requires all configured paths to exist; missing directories or files will result in warnings or errors.
+- Only basic dependencies (`behave`, `requests`, `PyYAML`) are installed automatically. Any additional dependencies must be managed by the user via `test_requirements`.
+- The framework is database-agnostic; your application must handle its own database connection using an environment variable (e.g., `DATABASE_URL`).
+- The framework does not validate the internal logic of your tests or guarantee compatibility with non-standard stacks.
+- No built-in support for stacks or languages outside Python for BDD steps.
 
 ---
 
