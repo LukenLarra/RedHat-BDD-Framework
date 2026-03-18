@@ -60,6 +60,7 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             "${{ inputs.service_package }}"
         fi
+        echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
       shell: bash
