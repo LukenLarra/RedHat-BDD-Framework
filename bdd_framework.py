@@ -136,6 +136,40 @@ class BDDFramework:
                 self._log("INFO", f"📁 Reports directory created: {dir_path}")
                 break
 
+    def _inject_workspace_path(self):
+        """
+        Injects the project's root path into the Python environment
+        by creating a .pth file in the site-packages directory.
+        This allows tests to import modules from the root path without
+        messing with PYTHONPATH.
+        """
+        try:
+            import site
+
+            # Use getsitepackages() if available, otherwise fallback to user site packages
+            if hasattr(site, "getsitepackages"):
+                site_packages = site.getsitepackages()
+            else:
+                site_packages = [site.getusersitepackages()]
+
+            if not site_packages:
+                self._log("WARNING", "No site-packages directories found to inject workspace path")
+                return
+
+            # Generally the first one is the active venv's site-packages
+            target_site = site_packages[0]
+            pth_file = Path(target_site) / "bdd_framework_workspace.pth"
+
+            # Ensure the directory exists
+            Path(target_site).mkdir(parents=True, exist_ok=True)
+
+            with open(pth_file, "w", encoding="utf-8") as f:
+                f.write(str(self.root_path) + "\n")
+
+            self._log("DEBUG", f"Workspace path injected via {pth_file}")
+        except Exception as e:
+            self._log("WARNING", f"Failed to inject workspace path via .pth file: {e}")
+
     def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
         """
         Run BDD tests
@@ -156,6 +190,9 @@ class BDDFramework:
         bdd_config = tests_config.get("bdd", {})
         if bdd_config:
             self._validate_bdd_structure(bdd_config)
+
+        # Inject workspace path into the Python environment seamlessly
+        self._inject_workspace_path()
 
         self._log("INFO", "🧪 Running BDD tests...")
 
@@ -196,24 +233,7 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        # Adjust PYTHONPATH so that project modules are accessible
-        # even when behave is run from the tests subdirectory.
-        # Convert relative paths in PYTHONPATH to absolute paths based on root_path.
-        existing_pythonpath = os.environ.get("PYTHONPATH", "")
-        if existing_pythonpath:
-            abs_entries = []
-            for entry in existing_pythonpath.split(os.pathsep):
-                p = Path(entry)
-                if not p.is_absolute():
-                    p = self.root_path / p
-                abs_entries.append(str(p))
-            existing_pythonpath = os.pathsep.join(abs_entries)
-        root_pythonpath = (
-            f"{self.root_path}{os.pathsep}{existing_pythonpath}"
-            if existing_pythonpath
-            else str(self.root_path)
-        )
-        env = {**tests_config.get("env", {}), **os.environ, "PYTHONPATH": root_pythonpath}
+        env = {**tests_config.get("env", {}), **os.environ}
 
         try:
             # Run tests in the same process to see real-time output
