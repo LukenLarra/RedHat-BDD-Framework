@@ -1,11 +1,6 @@
 import os
 import sys
 
-# Agregar el directorio raíz del proyecto al PYTHONPATH
-root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if root_path not in sys.path:
-    sys.path.insert(0, root_path)
-
 from behave import __main__ as behave_main  # noqa: E402
 
 
