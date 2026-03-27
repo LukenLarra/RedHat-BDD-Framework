@@ -5,7 +5,6 @@ description: >
   Then call this action — it installs its own framework dependencies,
   runs the BDD tests, and publishes the results.
   DATABASE_URL is read from the job environment automatically.
-
 inputs:
   service:
     description: "Service name used for artifact naming"
@@ -26,7 +25,13 @@ inputs:
       already bundled with the framework.
     required: false
     default: ""
-
+  service_package:
+    description: >
+      Path to a Python package to install into the framework venv before
+      running tests (e.g. a service written in Python that needs to be
+      importable by the step files). Leave empty for non-Python services.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -50,6 +55,12 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             -r "${{ inputs.test_requirements }}"
         fi
+        if [[ -n "${{ inputs.service_package }}" ]]; then
+          uv pip install --quiet \
+            --python "${BDD_VENV}/bin/python" \
+            "${{ inputs.service_package }}"
+        fi
+        echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
       shell: bash
