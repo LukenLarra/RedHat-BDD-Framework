@@ -233,7 +233,10 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        env = {**tests_config.get("env", {}), **os.environ}
+        custom_env = tests_config.get("env") or {}
+        # Ensure that all values are strings, as required by subprocess.env
+        custom_env_str = {str(k): str(v) for k, v in custom_env.items()}
+        env = {**custom_env_str, **os.environ}
 
         try:
             # Run tests in the same process to see real-time output
