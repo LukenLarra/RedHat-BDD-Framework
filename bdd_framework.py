@@ -233,7 +233,18 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        env = {**tests_config.get("env", {}), **os.environ}
+        # Exportar root_path al PYTHONPATH para que subprocesos hijos (uvicorn) lo hereden
+        insights_path = str(self.root_path)
+        existing_pythonpath = os.environ.get("PYTHONPATH", "")
+        os.environ["PYTHONPATH"] = (
+            f"{insights_path}{os.pathsep}{existing_pythonpath}"
+            if existing_pythonpath
+            else insights_path
+        )
+
+        # Construir env con orden correcto — framework.yml tiene prioridad sobre os.environ
+        custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
+        env = {**os.environ, **custom_env_str}
 
         try:
             # Run tests in the same process to see real-time output
