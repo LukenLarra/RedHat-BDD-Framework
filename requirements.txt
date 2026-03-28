@@ -4,6 +4,7 @@
 # el framework (bdd_framework.py). Las dependencias de cada servicio
 # están en sus respectivos directorios.
 
+behave==1.2.6
 PyYAML==6.0.1
 
 # Instalación completa del proyecto:
