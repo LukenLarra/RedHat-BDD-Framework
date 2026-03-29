@@ -233,10 +233,9 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        custom_env = tests_config.get("env") or {}
-        # Ensure that all values are strings, as required by subprocess.env
-        custom_env_str = {str(k): str(v) for k, v in custom_env.items()}
-        env = {**custom_env_str, **os.environ}
+        # Construir env con orden correcto — framework.yml tiene prioridad sobre os.environ
+        custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
+        env = {**os.environ, **custom_env_str}
 
         try:
             # Run tests in the same process to see real-time output
