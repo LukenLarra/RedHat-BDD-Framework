@@ -234,12 +234,12 @@ class BDDFramework:
             cmd_parts.extend(extra_args)
 
         # Exportar root_path al PYTHONPATH para que subprocesos hijos (uvicorn) lo hereden
-        insights_path = str(self.root_path)
+        workspace_path = str(self.root_path)
         existing_pythonpath = os.environ.get("PYTHONPATH", "")
         os.environ["PYTHONPATH"] = (
-            f"{insights_path}{os.pathsep}{existing_pythonpath}"
+            f"{workspace_path}{os.pathsep}{existing_pythonpath}"
             if existing_pythonpath
-            else insights_path
+            else workspace_path
         )
 
         # Construir env con orden correcto — framework.yml tiene prioridad sobre os.environ
