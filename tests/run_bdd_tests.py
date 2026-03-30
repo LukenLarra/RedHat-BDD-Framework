@@ -18,7 +18,17 @@ def run_bdd_tests(extra_args=None):
         print(f"Error: no se encontró el directorio de features en '{features_path}'")
         sys.exit(1)
 
-    args = [features_path] + (extra_args or [])
+    # Si extra_args ya contiene una ruta a un archivo .feature específico,
+    # evitamos meter la carpeta features_path entera para no duplicar.
+    has_specific_feature = extra_args and any(
+        not arg.startswith("-") and arg.endswith(".feature") for arg in extra_args
+    )
+
+    if has_specific_feature:
+        args = extra_args
+    else:
+        args = [features_path] + (extra_args or [])
+
     exit_code = behave_main.main(args)
     sys.exit(exit_code)
 

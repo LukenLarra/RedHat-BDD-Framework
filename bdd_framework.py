@@ -318,6 +318,12 @@ Usage examples:
         help="Behave output format",
     )
 
+    parser.add_argument(
+        "--feature-file",
+        type=str,
+        help="Specific feature file to execute (overrides feature directory execution)",
+    )
+
     args, unknown = parser.parse_known_args()
 
     # Build extra arguments for the tests
@@ -328,6 +334,11 @@ Usage examples:
         extra_args.append("--no-capture")
     if args.format:
         extra_args.append(f"--format={args.format}")
+    if args.feature_file:
+        # Resolve feature file to an absolute path so it resolves correctly
+        # regardless of the child-process CWD (which is set to tests_path).
+        feature_path = Path(args.feature_file).resolve()
+        extra_args.append(str(feature_path))
 
     # Add unknown arguments (for flexibility)
     extra_args.extend(unknown)
