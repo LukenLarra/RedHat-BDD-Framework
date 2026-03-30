@@ -18,8 +18,7 @@ runs:
     - name: Set up dependencies
       shell: bash
       run: |
-        command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet
-        uv pip install --quiet --system pyyaml
+        command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet --break-system-packages
 
     - name: Run Python Discovery Script
       id: discover
