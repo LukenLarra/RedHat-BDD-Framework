@@ -38,6 +38,18 @@ inputs:
       If empty, uses the runner's default Python.
     required: false
     default: ""
+  feature_file:
+    description: "Specific .feature file to run (optional)"
+    required: false
+    default: ""
+  publish_results:
+    description: "Whether to publish test results (set to false in parallel matrix to avoid PR spam)"
+    required: false
+    default: "true"
+  artifact_name_suffix:
+    description: "Suffix for the uploaded artifact name to prevent collisions in matrix runs"
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -78,7 +90,11 @@ runs:
     - name: Run BDD Framework
       shell: bash
       run: |
-        "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}"
+        if [[ -n "${{ inputs.feature_file }}" ]]; then
+          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
+        else
+          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+        fi
 
     - name: Check for test reports
       id: check_reports
@@ -99,13 +115,13 @@ runs:
       if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
       uses: actions/upload-artifact@v4
       with:
-        name: bdd-test-reports-${{ inputs.service }}
+        name: bdd-test-reports-${{ inputs.service }}${{ inputs.artifact_name_suffix }}
         path: reports/${{ inputs.artifacts_log_dir }}
         retention-days: 30
         if-no-files-found: ignore
 
     - name: Publish test results
-      if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
+      if: always() && steps.check_reports.outputs.reports_exist == 'true' && inputs.publish_results == 'true' && !env.ACT
       uses: EnricoMi/publish-unit-test-result-action@v2
       with:
         files: reports/${{ inputs.artifacts_log_dir }}/*.xml

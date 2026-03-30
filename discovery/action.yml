@@ -1,0 +1,34 @@
+name: "RedHat BDD Framework - Discovery"
+description: >
+  Helper action to discover all .feature files in the project.
+  Outputs a JSON array to be used in a GitHub Actions matrix strategy
+  for running BDD tests in parallel.
+inputs:
+  bdd_config:
+    description: "Path to the BDD framework config file (relative to caller workspace)"
+    required: false
+    default: "framework.yml"
+outputs:
+  matrix:
+    description: "JSON array of paths to all discovered feature files"
+    value: ${{ steps.discover.outputs.matrix }}
+runs:
+  using: composite
+  steps:
+    - name: Set up dependencies
+      shell: bash
+      run: |
+        command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet
+        uv pip install --quiet --system pyyaml
+
+    - name: Run Python Discovery Script
+      id: discover
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/../scripts/discover_features.py" "${{ inputs.bdd_config }}" > bdd_matrix_features.json
+        MATRIX_JSON=$(cat bdd_matrix_features.json)
+        echo "Discovered features: $MATRIX_JSON"
+        # Export as multiline EOF to safely handle strings and quotes
+        echo "matrix<<EOF" >> $GITHUB_OUTPUT
+        echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
