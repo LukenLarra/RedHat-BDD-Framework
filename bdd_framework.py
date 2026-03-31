@@ -234,6 +234,22 @@ class BDDFramework:
         if has_specific_feature:
             # PARALLEL MODE: a specific feature file has been injected via --feature-file.
             interpreter_tokens = {sys.executable, "-m", "behave", "python", "python3", "python.exe"}
+            # Behave flags that are simple toggles and do not consume a following value.
+            no_value_flags = {
+                "--junit",
+                "--no-capture",
+                "--capture",
+                "--no-color",
+                "--color",
+                "--dry-run",
+                "--stop",
+                "--summary",
+                "--no-summary",
+                "--verbose",
+                "--quiet",
+                "-v",
+                "-q",
+            }
             flags_and_interpreter = []
             i = 0
             while i < len(cmd_parts):
@@ -243,20 +259,14 @@ class BDDFramework:
                     i += 1
                 elif part.startswith("-"):
                     flags_and_interpreter.append(part)
-                    # Si el siguiente token es el valor de esta flag (no empieza por -)
-                    # y no es un path de features, lo incluimos también
-                    if i + 1 < len(cmd_parts) and not cmd_parts[i + 1].startswith("-"):
-                        next_token = cmd_parts[i + 1]
-                        # Excluir si es un directorio de features
-                        next_path = Path(next_token)
-                        is_features_dir = (
-                            next_path.is_absolute()
-                            and next_path.is_dir()
-                            or (self.root_path / next_token).is_dir()
-                        )
-                        if not is_features_dir:
-                            flags_and_interpreter.append(next_token)
-                            i += 1
+                    # Preserve flag values when present (e.g. --junit-directory reports/junit).
+                    if (
+                        part not in no_value_flags
+                        and i + 1 < len(cmd_parts)
+                        and not cmd_parts[i + 1].startswith("-")
+                    ):
+                        flags_and_interpreter.append(cmd_parts[i + 1])
+                        i += 1
                     i += 1
                 else:
                     # Token posicional sin flag — es el directorio de features, lo saltamos
