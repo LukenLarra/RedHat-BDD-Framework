@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       max_parallel:
-        description: "Cantidad máxima de ejecuciones simultáneas (1 para secuencial)."
+        description: "Cantidad máxima de ejecuciones simultáneas"
         required: false
         type: number
         default: 256
