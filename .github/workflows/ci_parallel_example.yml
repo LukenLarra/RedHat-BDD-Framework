@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: ${{ inputs.max_parallel || 256 }}
+      max-parallel: ${{ fromJSON(inputs.max_parallel || '256') }}
       matrix:
         feature_file: ${{ fromJson(needs.discovery.outputs.matrix) }}
 
