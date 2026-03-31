@@ -389,8 +389,6 @@ Usage examples:
     if args.format:
         extra_args.append(f"--format={args.format}")
     if args.feature_file:
-        # Resolve feature file to an absolute path so it resolves correctly
-        # regardless of the child-process CWD (which is set to tests_path).
         feature_path = Path(args.feature_file).resolve()
         extra_args.append(str(feature_path))
 
