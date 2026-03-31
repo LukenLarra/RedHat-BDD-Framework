@@ -205,7 +205,7 @@ class BDDFramework:
         ):
             self._ensure_reports_directory(command, extra_args)
 
-        # Parse the full command (e.g., "python run_bdd_tests.py --no-capture")
+        # Parse the full command
         cmd_parts = command.split()
 
         # Resolve the interpreter/entrypoint to the framework's virtual environment
@@ -213,15 +213,12 @@ class BDDFramework:
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
         elif cmd_parts[0].lower() == "behave":
-            # Replace `behave` with `python -m behave` so it is resolved from
-            # the framework venv instead of relying on the runner's system PATH.
             cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
 
         # Make relative paths in the command absolute
         # Behave runs from tests/, but reports should go to root/reports
         for i, part in enumerate(cmd_parts):
             if part == "--junit-directory" and i + 1 < len(cmd_parts):
-                # Convert to absolute path from project root
                 reports_path = self.root_path / cmd_parts[i + 1]
                 cmd_parts[i + 1] = str(reports_path)
             elif part.startswith("--junit-directory="):
@@ -229,14 +226,34 @@ class BDDFramework:
                 reports_path = self.root_path / dir_path
                 cmd_parts[i] = f"--junit-directory={reports_path}"
 
-        # Add extra arguments if any
-        if extra_args:
-            cmd_parts.extend(extra_args)
+        # Detect if extra_args contains a specific feature file (parallel mode)
+        has_specific_feature = bool(extra_args) and any(
+            not arg.startswith("-") and arg.endswith(".feature") for arg in extra_args
+        )
+
+        if has_specific_feature:
+            # PARALLEL MODE: a specific feature file has been injected via --feature-file.
+            interpreter_tokens = {sys.executable, "-m", "behave", "python", "python3", "python.exe"}
+            flags_and_interpreter = [
+                part for part in cmd_parts if part.startswith("-") or part in interpreter_tokens
+            ]
+            feature_files = [
+                arg for arg in extra_args if not arg.startswith("-") and arg.endswith(".feature")
+            ]
+            other_extra = [arg for arg in extra_args if arg.startswith("-")]
+            cmd_parts = flags_and_interpreter + feature_files + other_extra
+            self._log("INFO", f"⚡ Parallel mode: running single feature → {feature_files[0]}")
+        else:
+            # SEQUENTIAL MODE: no specific feature file, run the full command as-is.
+            if extra_args:
+                cmd_parts.extend(extra_args)
 
         env = {**tests_config.get("env", {}), **os.environ}
 
+        self._log("DEBUG", f"Command: {' '.join(cmd_parts)}")
+        self._log("DEBUG", f"CWD: {tests_path}")
+
         try:
-            # Run tests in the same process to see real-time output
             result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
 
             if result.returncode == 0:
