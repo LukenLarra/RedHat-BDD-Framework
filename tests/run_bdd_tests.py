@@ -25,10 +25,16 @@ def run_bdd_tests(extra_args=None):
     )
 
     if has_specific_feature:
-        args = extra_args
+        # Separar el path del feature del resto de flags
+        feature_paths = [
+            arg for arg in extra_args if not arg.startswith("-") and arg.endswith(".feature")
+        ]
+        flags = [arg for arg in extra_args if arg.startswith("-")]
+        args = feature_paths + flags
     else:
         args = [features_path] + (extra_args or [])
 
+    print(f"Ejecutando Behave con los siguientes argumentos: {args}")
     exit_code = behave_main.main(args)
     sys.exit(exit_code)
 
