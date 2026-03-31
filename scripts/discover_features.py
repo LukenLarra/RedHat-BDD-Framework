@@ -33,8 +33,14 @@ def discover(config_path="framework.yml"):
         )
         sys.exit(1)
 
+    # Read optional exclude list from framework configuration file
+    exclude_raw = config.get("tests", {}).get("bdd", {}).get("exclude") or []
+    exclude_names = {Path(e).name for e in exclude_raw}
+
     # Find all .feature files and sort them for deterministic order across runs
-    feature_files = sorted(str(p.as_posix()) for p in features_path.rglob("*.feature"))
+    feature_files = sorted(
+        str(p.as_posix()) for p in features_path.rglob("*.feature") if p.name not in exclude_names
+    )
 
     if not feature_files:
         print(f"Warning: No .feature files found in '{features_dir}'.", file=sys.stderr)
