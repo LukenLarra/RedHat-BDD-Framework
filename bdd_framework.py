@@ -234,15 +234,41 @@ class BDDFramework:
         if has_specific_feature:
             # PARALLEL MODE: a specific feature file has been injected via --feature-file.
             interpreter_tokens = {sys.executable, "-m", "behave", "python", "python3", "python.exe"}
-            flags_and_interpreter = [
-                part for part in cmd_parts if part.startswith("-") or part in interpreter_tokens
-            ]
+            flags_and_interpreter = []
+            i = 0
+            while i < len(cmd_parts):
+                part = cmd_parts[i]
+                if part in interpreter_tokens:
+                    flags_and_interpreter.append(part)
+                    i += 1
+                elif part.startswith("-"):
+                    flags_and_interpreter.append(part)
+                    # Si el siguiente token es el valor de esta flag (no empieza por -)
+                    # y no es un path de features, lo incluimos también
+                    if i + 1 < len(cmd_parts) and not cmd_parts[i + 1].startswith("-"):
+                        next_token = cmd_parts[i + 1]
+                        # Excluir si es un directorio de features
+                        next_path = Path(next_token)
+                        is_features_dir = (
+                            next_path.is_absolute()
+                            and next_path.is_dir()
+                            or (self.root_path / next_token).is_dir()
+                        )
+                        if not is_features_dir:
+                            flags_and_interpreter.append(next_token)
+                            i += 1
+                    i += 1
+                else:
+                    # Token posicional sin flag — es el directorio de features, lo saltamos
+                    i += 1
+
             feature_files = [
                 arg for arg in extra_args if not arg.startswith("-") and arg.endswith(".feature")
             ]
             other_extra = [arg for arg in extra_args if arg.startswith("-")]
             cmd_parts = flags_and_interpreter + feature_files + other_extra
             self._log("INFO", f"⚡ Parallel mode: running single feature → {feature_files[0]}")
+
         else:
             # SEQUENTIAL MODE: no specific feature file, run the full command as-is.
             if extra_args:
