@@ -284,7 +284,8 @@ class BDDFramework:
             if extra_args:
                 cmd_parts.extend(extra_args)
 
-        env = {**tests_config.get("env", {}), **os.environ}
+        test_env = tests_config.get("env") or {}
+        env = {**test_env, **os.environ}
 
         self._log("DEBUG", f"Command: {' '.join(cmd_parts)}")
         self._log("DEBUG", f"CWD: {tests_path}")
