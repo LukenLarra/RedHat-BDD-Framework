@@ -93,10 +93,10 @@ In GitHub Actions, declare the database as a job-level `services:` container —
 
 ### CI/CD Configuration
 
-The framework is distributed both as a **composite action** and a **reusable workflow**:
+The framework is distributed as **composite actions** (`/` and `/discovery`) that you can wire in your workflow:
 
 1. **Composite Action (Sequential)**: Runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
-2. **Reusable Workflow (Parallel Matrix)**: Scans your `.feature` files and splits the load into a Matrix of N concurrent jobs.
+2. **Discovery + Matrix (Parallel)**: The discovery action scans `.feature` files and outputs a JSON list. Your workflow then uses that list in a matrix strategy to run multiple jobs concurrently.
 
 #### Option A: Composite Action (Sequential execution)
 
