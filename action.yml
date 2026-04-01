@@ -50,6 +50,9 @@ runs:
           --python "${BDD_VENV}/bin/python" \
           -r "${{ github.action_path }}/requirements.txt" \
           -r "${{ github.action_path }}/tests/requirements.txt"
+        uv pip install --quiet \
+          --python "${BDD_VENV}/bin/python" \
+          "${{ github.action_path }}"
         if [[ -n "${{ inputs.test_requirements }}" ]]; then
           uv pip install --quiet \
             --python "${BDD_VENV}/bin/python" \
@@ -65,7 +68,7 @@ runs:
     - name: Run BDD Framework
       shell: bash
       run: |
-        "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+        "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}"
 
     - name: Check for test reports
       id: check_reports
