@@ -152,16 +152,8 @@ class BDDFramework:
         if extra_args:
             cmd_parts.extend(extra_args)
 
-        workspace_path = str(self.root_path)
-        existing_pythonpath = os.environ.get("PYTHONPATH", "")
-        effective_pythonpath = (
-            f"{workspace_path}{os.pathsep}{existing_pythonpath}"
-            if existing_pythonpath
-            else workspace_path
-        )
-
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
-        env = {**os.environ, "PYTHONPATH": effective_pythonpath, **custom_env_str}
+        env = {**os.environ, **custom_env_str}
 
         try:
             result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
