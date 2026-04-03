@@ -8,6 +8,9 @@ def before_all(context):
     """Se ejecuta una vez antes de todos los tests"""
     context.api_url = os.getenv("API_URL", "http://localhost:8000")
 
+    # Determinar si la ejecución es local (útil para la etiqueta @local)
+    context.local = os.getenv("ENV_DOCKER", "False").lower() in ["0", "false"]
+
     # Verificar que la API está disponible
     max_retries = 30
     print(f"\nEsperando a que la API esté disponible en {context.api_url}...")
@@ -25,6 +28,16 @@ def before_all(context):
 
 def before_scenario(context, scenario):
     """Resetea el estado antes de cada escenario"""
+    # Permitir saltar tests marcados con @skip
+    if "skip" in scenario.effective_tags:
+        scenario.skip("Saltado porque contiene el tag @skip")
+        return
+
+    # Permitir saltar tests marcados con @local si la ejecución no es local (ej. CI o Docker)
+    if "local" in scenario.effective_tags and not getattr(context, "local", True):
+        scenario.skip("Saltado porque contiene el tag @local pero la ejecución no es local")
+        return
+
     context.response = None
     context.status_code = None
 
