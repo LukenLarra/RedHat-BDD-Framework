@@ -139,9 +139,11 @@ jobs:
       - uses: LukenLarra/RedHat-BDD-Framework@main
         with:
           service: "my-service"
+          # python_version: "3.12"                # optional, lets uv build the venv using a specific python version
           # bdd_config: "framework.yml"           # optional, default: framework.yml
           # artifacts_log_dir: "junit"            # optional, default: junit
           # test_requirements: "tests/requirements.txt"  # optional, see below
+          # service_package: "."                  # optional, install an importable package into the framework venv
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
@@ -207,6 +209,7 @@ In your CI workflow, you must:
 - Define global environment variables such as `DATABASE_URL` (or the variable your stack uses).
 - Ensure all paths in your configuration file exist and are accessible to the framework.
 - If your step files require additional dependencies, provide a `requirements.txt` and pass it as the `test_requirements` input to the framework.
+- The framework runs Python-based BDD tests. You can specify the exact Python version to use for tests by passing the `python_version` input (e.g., `python_version: "3.12"`). If omitted, it will fall back to the environment's default Python.
 
 ---
 
