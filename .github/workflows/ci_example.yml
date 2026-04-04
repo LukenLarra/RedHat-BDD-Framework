@@ -126,3 +126,10 @@ jobs:
         uses: ./ #LukenLarra/RedHat-BDD-Framework@main
         with:
           service: "movies-api"
+          python_version: "3.12"
+
+          # Optional inputs (showing their default values for reference):
+          # bdd_config: "framework.yml"
+          # artifacts_log_dir: "junit"
+          # test_requirements: ""
+          # service_package: ""
