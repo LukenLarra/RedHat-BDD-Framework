@@ -257,6 +257,9 @@ class BDDFramework:
                 if part in interpreter_tokens:
                     flags_and_interpreter.append(part)
                     i += 1
+                elif part.endswith(".py"):
+                    flags_and_interpreter.append(part)
+                    i += 1
                 elif part.startswith("-"):
                     flags_and_interpreter.append(part)
                     # Preserve flag values when present (e.g. --junit-directory reports/junit).

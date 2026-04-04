@@ -33,11 +33,11 @@ inputs:
     required: false
     default: ""
   feature_file:
-    description: "Specific .feature file to run (optional)"
+    description: "Specific .feature file to run (used in parallel executions to split tests by feature)"
     required: false
     default: ""
   publish_results:
-    description: "Whether to publish test results (set to false in parallel matrix to avoid PR spam)"
+    description: "Whether to publish test results (set to false in parallel executions to avoid PR spam)"
     required: false
     default: "true"
   artifact_name_suffix:
