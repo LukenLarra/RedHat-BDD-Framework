@@ -42,6 +42,10 @@ inputs:
     default: "true"
   artifact_name_suffix:
     description: "Suffix for the uploaded artifact name to prevent collisions in matrix runs"
+  python_version:
+    description: >
+      Python version to use for the BDD testing environment (e.g., '3.12').
+      If empty, uses the runner's default Python.
     required: false
     default: ""
 runs:
@@ -57,7 +61,11 @@ runs:
         fi
         echo "BDD_VENV_PATH=${BDD_VENV}" >> "$GITHUB_ENV"
         command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet
-        uv venv "${BDD_VENV}"
+        if [[ -n "${{ inputs.python_version }}" ]]; then
+          uv venv --python "${{ inputs.python_version }}" "${BDD_VENV}"
+        else
+          uv venv "${BDD_VENV}"
+        fi
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
           -r "${{ github.action_path }}/requirements.txt" \
