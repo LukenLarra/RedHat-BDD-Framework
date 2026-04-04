@@ -25,12 +25,12 @@ def run_bdd_tests(extra_args=None):
     )
 
     if has_specific_feature:
-        # Separar el path del feature del resto de flags
+        # Poner feature_paths primero y luego el resto de los argumentos que no sean .feature
         feature_paths = [
             arg for arg in extra_args if not arg.startswith("-") and arg.endswith(".feature")
         ]
-        flags = [arg for arg in extra_args if arg.startswith("-")]
-        args = feature_paths + flags
+        other_args = [arg for arg in extra_args if arg not in feature_paths]
+        args = feature_paths + other_args
     else:
         args = [features_path] + (extra_args or [])
 
