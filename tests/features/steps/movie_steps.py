@@ -101,7 +101,7 @@ def step_llm_confirms_condition(context, condition):
 
     try:
         completion = context.openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="llama3-8b-8192",  # Modelo super-rápido de Llama 3 en Groq
             messages=[
                 {
                     "role": "system",
@@ -118,4 +118,10 @@ def step_llm_confirms_condition(context, condition):
             f"LLM Assertion fallida. El modelo evaluó la condición como: {text_response}"
         )
     except Exception as e:
+        import openai
+
+        if isinstance(e, openai.RateLimitError):
+            print(f"\n[AI SKIP] Skipiando aserción LLM por sobrepasar límite de Groq: {e}")
+            context.scenario.skip("Saltado: Rate limit alcanzado en Groq")
+            return
         raise AssertionError(f"Error en la aserción con LLM: {e}") from e
