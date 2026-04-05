@@ -9,8 +9,7 @@ from playwright.sync_api import sync_playwright
 
 def before_all(context):
     """Se ejecuta una vez antes de todos los tests"""
-    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-    dotenv.load_dotenv(env_path)
+    dotenv.load_dotenv()
     context.api_url = os.getenv("API_URL", "http://localhost:8000")
 
     # Configurar Groq si hay API key (usando la librería de OpenAI)
