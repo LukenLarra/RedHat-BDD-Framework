@@ -126,6 +126,8 @@ jobs:
       # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
         uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           service: "movies-api"
 
