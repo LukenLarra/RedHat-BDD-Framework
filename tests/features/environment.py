@@ -11,10 +11,12 @@ def before_all(context):
     dotenv.load_dotenv()
     context.api_url = os.getenv("API_URL", "http://localhost:8000")
 
-    # Configurar OpenAI si hay API key
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    if openai_api_key:
-        context.openai_client = OpenAI(api_key=openai_api_key)
+    # Configurar Groq si hay API key (usando la librería de OpenAI)
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if groq_api_key:
+        context.openai_client = OpenAI(
+            api_key=groq_api_key, base_url="https://api.groq.com/openai/v1"
+        )
     else:
         context.openai_client = None
 
@@ -38,7 +40,7 @@ def before_scenario(context, scenario):
 
     # Si el test requiere IA pero no hay API key, se salta
     if "ai" in scenario.effective_tags and not getattr(context, "openai_client", None):
-        scenario.skip("Saltado: requiere @ai pero no hay OPENAI_API_KEY configurada")
+        scenario.skip("Saltado: requiere @ai pero no hay GROQ_API_KEY configurada")
         return
 
     context.response = None
