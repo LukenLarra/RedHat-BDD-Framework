@@ -101,7 +101,7 @@ def step_llm_confirms_condition(context, condition):
 
     try:
         completion = context.openai_client.chat.completions.create(
-            model="llama3-8b-8192",  # Modelo super-rápido de Llama 3 en Groq
+            model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
