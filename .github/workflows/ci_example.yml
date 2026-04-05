@@ -124,6 +124,8 @@ jobs:
       # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
         uses: ./ #LukenLarra/RedHat-BDD-Framework@main
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           service: "movies-api"
           python_version: "3.12"
