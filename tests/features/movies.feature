@@ -17,3 +17,11 @@ Feature: Movie management
     When I make a GET request to "/api/movies/1"
     Then I get a response with status code 200
     And the response contains the details of the movie with ID 1
+
+  @ai
+  Scenario: Verify a movie specific aspect dynamically with AI
+    Given the API is running
+    And there is a movie with ID 2
+    When I make a GET request to "/api/movies/2"
+    Then I get a response with status code 200
+    And the LLM confirms that "the movie was directed by Quentin Tarantino"

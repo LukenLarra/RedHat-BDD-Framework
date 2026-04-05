@@ -1,3 +1,5 @@
+import json
+
 import requests
 from behave import given, then, when
 
@@ -78,3 +80,42 @@ def step_response_contains_movie_details(context, movie_id):
     movie = context.response.get("data")
     assert movie is not None, f"No se encontró ninguna película con ID {movie_id}"
     assert movie["id"] == int(movie_id), f"ID esperado: {movie_id}, ID obtenido: {movie['id']}"
+
+
+@then('the LLM confirms that "{condition}"')
+def step_llm_confirms_condition(context, condition):
+    """Verifica una condición usando el LLM (OpenAI) sobre la respuesta de la API"""
+    assert context.response is not None, "No hay respuesta para evaluar con el LLM"
+    assert getattr(context, "openai_client", None) is not None, "Cliente OpenAI no inicializado"
+
+    prompt = f"""
+    Eres un evaluador de pruebas de software estricto. Tu única tarea es validar si
+    el payload JSON proporcionado cumple con la siguiente condición descrita por el usuario:
+    "{condition}"
+
+    Responde ESTRICTA Y ÚNICAMENTE con la palabra "True" si se cumple la condición, o "False" si no se cumple. Sin ningún otro texto.
+
+    Response payload JSON recibido del backend a evaluar:
+    {json.dumps(context.response, indent=2)}
+    """
+
+    try:
+        completion = context.openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a strict evaluator that ONLY outputs 'True' or 'False'.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=5,
+            temperature=0,
+        )
+        text_response = completion.choices[0].message.content.strip()
+
+        assert text_response.lower() == "true", (
+            f"LLM Assertion fallida. El modelo evaluó la condición como: {text_response}"
+        )
+    except Exception as e:
+        raise AssertionError(f"Error en la aserción con LLM: {e}") from e
