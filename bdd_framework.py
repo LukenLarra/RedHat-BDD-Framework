@@ -44,7 +44,7 @@ class BDDFramework:
         self.config_path = config_path
         self.config = self._load_config()
         self._validate_config()
-        self.root_path = Path(self.config_path).resolve().parent
+        self.root_path = Path(self.config_path).absolute().parent
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file"""
