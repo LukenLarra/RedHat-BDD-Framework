@@ -46,11 +46,11 @@ def step_movie_exists(context, movie_id):
         raise AssertionError(f"Error al verificar la película: {e}") from e
 
 
-@then("I get a response with status code 200")
-def step_status_code_200(context):
-    """Verifica que el código de estado sea 200"""
-    assert context.status_code == 200, (
-        f"Se esperaba status code 200, se obtuvo {context.status_code}"
+@then("I get a response with status code {expected_status:d}")
+def step_status_code(context, expected_status):
+    """Verifica que el código de estado coincida con el esperado"""
+    assert context.status_code == expected_status, (
+        f"Se esperaba status code {expected_status}, se obtuvo {context.status_code}"
     )
 
 
