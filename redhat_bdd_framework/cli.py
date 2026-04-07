@@ -150,6 +150,11 @@ class BDDFramework:
                 cmd_parts[i] = f"--junit-directory={reports_path}"
 
         if extra_args:
+            for i, arg in enumerate(extra_args):
+                if not arg.startswith("-") and arg.endswith(".feature"):
+                    feat_path = self.root_path / arg
+                    if feat_path.exists():
+                        extra_args[i] = str(feat_path.absolute())
             cmd_parts.extend(extra_args)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
