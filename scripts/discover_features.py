@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""
+Script to discover BDD feature files based on a YAML configuration.
+
+This script parses a framework configuration file, locates the features directory,
+handles exclusion rules, and outputs a JSON array of discovered feature files.
+It is primarily used to generate a matrix for GitHub Actions parallel execution.
+"""
+
 import json
 import sys
 from pathlib import Path
@@ -7,6 +15,20 @@ import yaml
 
 
 def discover(config_path="framework.yml"):
+    """
+    Discover `.feature` files based on the provided configuration file.
+
+    Args:
+        config_path (str): The path to the YAML configuration file. Defaults to "framework.yml".
+
+    Outputs:
+        Prints a JSON formatted list of discovered feature file paths to standard output.
+        Prints error or warning messages to standard error.
+
+    Raises:
+        SystemExit: Exits with code 1 if the configuration file is missing, invalid,
+                    or if the features directory cannot be found.
+    """
     config_file = Path(config_path)
     if not config_file.exists():
         print(f"Error: {config_path} not found.", file=sys.stderr)
