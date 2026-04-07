@@ -5,37 +5,37 @@ import requests
 
 
 def before_all(context):
-    """Se ejecuta una vez antes de todos los tests"""
+    """Executes once before all tests"""
     context.api_url = os.getenv("API_URL", "http://localhost:8000")
 
-    # Determinar si la ejecución es local (útil para la etiqueta @local)
+    # Determine if execution is local (useful for @local tag)
     context.local = os.getenv("ENV_DOCKER", "False").lower() in ["0", "false"]
 
-    # Verificar que la API está disponible
+    # Verify that the API is available
     max_retries = 30
-    print(f"\nEsperando a que la API esté disponible en {context.api_url}...")
+    print(f"\nWaiting for API to be available at {context.api_url}...")
     for i in range(max_retries):
         try:
             response = requests.get(f"{context.api_url}/health", timeout=1)
             if response.status_code == 200:
-                print(f"✓ API disponible en {context.api_url}")
+                print(f"✓ API available at {context.api_url}")
                 break
         except requests.exceptions.RequestException as e:
             if i == max_retries - 1:
-                raise Exception(f"No se pudo conectar a la API en {context.api_url}") from e
+                raise Exception(f"Could not connect to API at {context.api_url}") from e
             time.sleep(1)
 
 
 def before_scenario(context, scenario):
-    """Resetea el estado antes de cada escenario"""
-    # Permitir saltar tests marcados con @skip
+    """Resets the state before each scenario"""
+    # Allow skipping tests marked with @skip
     if "skip" in scenario.effective_tags:
-        scenario.skip("Saltado porque contiene el tag @skip")
+        scenario.skip("Skipped because it contains the @skip tag")
         return
 
-    # Permitir saltar tests marcados con @local si la ejecución no es local (ej. CI o Docker)
+    # Allow skipping tests marked with @local if execution is not local (e.g. CI or Docker)
     if "local" in scenario.effective_tags and not getattr(context, "local", True):
-        scenario.skip("Saltado porque contiene el tag @local pero la ejecución no es local")
+        scenario.skip("Skipped because it contains the @local tag but execution is not local")
         return
 
     context.response = None
@@ -43,15 +43,15 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
-    """Se ejecuta después de cada escenario"""
+    """Executes after each scenario"""
     if scenario.status == "failed":
-        print(f"\n✗ Escenario fallido: {scenario.name}")
+        print(f"\n✗ Failed scenario: {scenario.name}")
         if hasattr(context, "response"):
-            print(f"  Última respuesta: {context.response}")
+            print(f"  Last response: {context.response}")
         if hasattr(context, "status_code"):
-            print(f"  Último status code: {context.status_code}")
+            print(f"  Last status code: {context.status_code}")
 
 
 def after_all(context):
-    """Se ejecuta una vez después de todos los tests"""
-    print("\n✓ Tests completados")
+    """Executes once after all tests"""
+    print("\n✓ Tests completed")
