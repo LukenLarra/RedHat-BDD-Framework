@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
     inputs:
       max_parallel:
-        description: "Cantidad máxima de ejecuciones simultáneas"
+        description: "Maximum number of parallel jobs to run."
         required: false
         type: number
-        default: 256
+        default: 16
 
 permissions:
   contents: read

@@ -42,24 +42,15 @@ inputs:
     default: "true"
   artifact_name_suffix:
     description: "Suffix for the uploaded artifact name to prevent collisions in matrix runs"
+    required: false
+    default: ""
   python_version:
     description: >
       Python version to use for the BDD testing environment (e.g., '3.12').
       If empty, uses the runner's default Python.
     required: false
     default: ""
-  feature_file:
-    description: "Specific .feature file to run (used in parallel executions to split tests by feature)"
-    required: false
-    default: ""
-  publish_results:
-    description: "Whether to publish test results (set to false in parallel executions to avoid PR spam)"
-    required: false
-    default: "true"
-  artifact_name_suffix:
-    description: "Suffix for the uploaded artifact name to prevent collisions in matrix runs"
-    required: false
-    default: ""
+
 runs:
   using: composite
   steps:
