@@ -159,6 +159,8 @@ jobs:
 
 If your test suite is large, you can speed up CI by discovering all `.feature` files dynamically and distributing them across GitHub runners. This allows you to keep using your `services:` and exact configuration seamlessly.
 
+> Note: For this repository, each matrix runner still installs Python and Node dependencies locally. Because this stack uses interpreted languages with large dependency graphs, GitHub Actions native caching is usually faster than uploading/downloading full dependency artifacts between separate runners. Still, evaluate your own workflow: if your project can install shared dependencies once before the parallel matrix, that may be worth trying.
+
 ```yaml
 # .github/workflows/ci_parallel.yml in YOUR repository
 jobs:
