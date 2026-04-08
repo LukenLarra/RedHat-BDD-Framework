@@ -25,12 +25,12 @@ def run_bdd_tests(extra_args=None):
     )
 
     if has_specific_feature:
-        # Poner feature_paths primero y luego el resto de los argumentos que no sean .feature
+        # Behave parses options more reliably when they appear before feature paths.
         feature_paths = [
             arg for arg in extra_args if not arg.startswith("-") and arg.endswith(".feature")
         ]
         other_args = [arg for arg in extra_args if arg not in feature_paths]
-        args = feature_paths + other_args
+        args = other_args + feature_paths
     else:
         args = [features_path] + (extra_args or [])
 

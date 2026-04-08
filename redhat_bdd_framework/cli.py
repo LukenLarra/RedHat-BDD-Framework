@@ -151,23 +151,10 @@ class BDDFramework:
 
         if extra_args:
             for i, arg in enumerate(extra_args):
-                if arg.startswith("-"):
-                    continue
-
-                feature_path_str = arg
-                feature_suffix = ""
-                if ":" in arg:
-                    feature_path_str, feature_suffix = arg.split(":", 1)
-
-                if feature_path_str.endswith(".feature"):
-                    feat_path = Path(feature_path_str)
-                    if not feat_path.is_absolute():
-                        feat_path = self.root_path / feature_path_str
+                if not arg.startswith("-") and arg.endswith(".feature"):
+                    feat_path = self.root_path / arg
                     if feat_path.exists():
-                        replacement = str(feat_path.absolute())
-                        if feature_suffix:
-                            replacement = f"{replacement}:{feature_suffix}"
-                        extra_args[i] = replacement
+                        extra_args[i] = str(feat_path.absolute())
             cmd_parts.extend(extra_args)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
@@ -242,12 +229,6 @@ Usage examples:
         choices=["pretty", "plain", "json"],
         help="Behave output format",
     )
-    parser.add_argument(
-        "feature_file",
-        nargs="?",
-        default=None,
-        help="Specific feature file to run",
-    )
     return parser
 
 
@@ -263,8 +244,6 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         extra_args.append("--no-capture")
     if args.format:
         extra_args.append(f"--format={args.format}")
-    if args.feature_file:
-        extra_args.append(args.feature_file)
     extra_args.extend(unknown)
 
     framework = BDDFramework(args.config)
