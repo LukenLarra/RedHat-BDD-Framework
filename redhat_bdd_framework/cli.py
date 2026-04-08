@@ -234,7 +234,7 @@ Usage examples:
         help="Behave output format",
     )
     parser.add_argument(
-        "--feature_file",
+        "--feature-file",
         type=str,
         help="Specific feature file to execute (e.g. path/to/file.feature)",
     )
@@ -253,8 +253,8 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         extra_args.append("--no-capture")
     if args.format:
         extra_args.append(f"--format={args.format}")
-    if getattr(args, "feature_file", None):
-        extra_args.append(args.feature_file)
+    if getattr(args, "feature-file", None):
+        extra_args.append(f"--feature-file={args.feature_file}")
     extra_args.extend(unknown)
 
     framework = BDDFramework(args.config)
