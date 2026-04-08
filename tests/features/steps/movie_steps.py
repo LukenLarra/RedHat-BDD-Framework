@@ -89,11 +89,15 @@ def step_llm_confirms_condition(context, condition):
     assert getattr(context, "openai_client", None) is not None, "Cliente OpenAI no inicializado"
 
     prompt = f"""
-    Eres un evaluador de pruebas de software estricto. Tu única tarea es validar si
+    Eres un evaluador de pruebas de software estricto. Tu tarea es validar si
     el payload JSON proporcionado cumple con la siguiente condición descrita por el usuario:
     "{condition}"
 
-    Responde ESTRICTA Y ÚNICAMENTE con la palabra "True" si se cumple la condición, o "False" si no se cumple. Sin ningún otro texto.
+    Devuelve ÚNICAMENTE un objeto JSON válido con este formato, sin bloques de código markdown:
+    {{
+        "result": true o false,
+        "reason": "Explicación detallada de por qué se cumple o no la condición basado en los datos"
+    }}
 
     Response payload JSON recibido del backend a evaluar:
     {json.dumps(context.response, indent=2)}
@@ -105,18 +109,25 @@ def step_llm_confirms_condition(context, condition):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a strict evaluator that ONLY outputs 'True' or 'False'.",
+                    "content": "You are a strict evaluator. Output ONLY valid JSON. No markdown markup.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=5,
+            max_tokens=200,
             temperature=0,
+            response_format={"type": "json_object"},
         )
         text_response = completion.choices[0].message.content.strip()
 
-        assert text_response.lower() == "true", (
-            f"LLM Assertion fallida. El modelo evaluó la condición como: {text_response}"
-        )
+        try:
+            result_data = json.loads(text_response)
+            is_valid = result_data.get("result", False)
+            reason = result_data.get("reason", "Sin razón proporcionada por el LLM")
+        except json.JSONDecodeError:
+            is_valid = False
+            reason = f"Respuesta inesperada del LLM (no es JSON válido): {text_response}"
+
+        assert is_valid is True, f"LLM Assertion fallida.\n  Evaluación de la IA: {reason}"
     except Exception as e:
         import openai
 
