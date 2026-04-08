@@ -151,23 +151,14 @@ class BDDFramework:
 
         if extra_args:
             for i, arg in enumerate(extra_args):
-                if arg.startswith("-"):
-                    continue
-
-                feature_path_str = arg
-                feature_suffix = ""
-                if ".feature:" in arg:
-                    feature_path_str, feature_suffix = arg.split(":", 1)
-
-                if feature_path_str.endswith(".feature"):
-                    feat_path = Path(feature_path_str)
+                if not arg.startswith("-") and ".feature" in arg:
+                    parts = arg.split(":", 1)
+                    feat_path = Path(parts[0])
                     if not feat_path.is_absolute():
-                        feat_path = self.root_path / feature_path_str
+                        feat_path = self.root_path / feat_path
                     if feat_path.exists():
-                        replacement = str(feat_path.absolute())
-                        if feature_suffix:
-                            replacement = f"{replacement}:{feature_suffix}"
-                        extra_args[i] = replacement
+                        parts[0] = str(feat_path.absolute())
+                        extra_args[i] = ":".join(parts)
             cmd_parts.extend(extra_args)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
@@ -243,9 +234,9 @@ Usage examples:
         help="Behave output format",
     )
     parser.add_argument(
-        "targets",
-        nargs="*",
-        help="Specific test targets (DIR|FILE|FILE:LINE)",
+        "--feature_file",
+        type=str,
+        help="Specific feature file to execute (e.g. path/to/file.feature)",
     )
     return parser
 
@@ -262,8 +253,8 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         extra_args.append("--no-capture")
     if args.format:
         extra_args.append(f"--format={args.format}")
-    if args.targets:
-        extra_args.extend(args.targets)
+    if getattr(args, "feature_file", None):
+        extra_args.append(args.feature_file)
     extra_args.extend(unknown)
 
     framework = BDDFramework(args.config)

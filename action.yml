@@ -92,7 +92,7 @@ runs:
       shell: bash
       run: |
         if [[ -n "${{ inputs.feature_file }}" ]]; then
-          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}" "${{ inputs.feature_file }}"
+          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature_file "${{ inputs.feature_file }}"
         else
           "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
         fi
