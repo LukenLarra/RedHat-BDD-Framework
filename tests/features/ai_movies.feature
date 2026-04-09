@@ -27,7 +27,7 @@ Feature: AI-powered Movie management tests
     Given the API is running
     When I make a GET request to "/api/movies"
     Then I get a response with status code 200
-    And the LLM confirms that "Christopher Nolan is the most frequent director in the list, with exactly 3 movies"
+    And the LLM confirms that "Christopher Nolan has exactly 3 movies in the list, which is more than any other director"
 
   # AI Capability: Semantic deduction and 'Fuzzy Matching' (connecting external knowledge to the raw data)
   @ai
