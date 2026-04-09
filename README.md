@@ -169,6 +169,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
+      has_features: ${{ steps.discover.outputs.has_features }}
     steps:
       - uses: actions/checkout@v4
       - id: discover
@@ -177,9 +178,11 @@ jobs:
   # 2. Runner Job: spins up isolated machines in parallel
   parallel-bdd:
     needs: discovery
+    if: needs.discovery.outputs.has_features == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 16
       matrix:
         feature_file: ${{ fromJson(needs.discovery.outputs.matrix) }}
 
@@ -230,9 +233,9 @@ jobs:
           path: reports/junit
           merge-multiple: true
 
-      - uses: EnricoMi/publish-unit-test-result-action@v2
+      - uses: LukenLarra/RedHat-BDD-Framework/publish-reports@main
         with:
-          files: reports/junit/*.xml
+          report_path: "reports/junit/*.xml"
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.

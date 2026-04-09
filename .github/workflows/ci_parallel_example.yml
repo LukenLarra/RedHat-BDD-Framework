@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.discover.outputs.matrix }}
+      has_features: ${{ steps.discover.outputs.has_features }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,6 +44,7 @@ jobs:
   # ============================================================
   bdd-tests-parallel:
     needs: discovery
+    if: needs.discovery.outputs.has_features == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -152,9 +154,8 @@ jobs:
       - name: Run BDD Framework (Parallel)
         uses: ./ #LukenLarra/RedHat-BDD-Framework@main
         with:
-          service: "movies-api"             # ← your service name
+          service: "movies-api" # ← your service name
           feature_file: ${{ matrix.feature_file }}
-          publish_results: "false"
           artifact_name_suffix: "-${{ strategy.job-index }}"
           # ← Optional: path to extra Python requirements for your step files
           # test_requirements: "tests/requirements.txt"
@@ -181,11 +182,11 @@ jobs:
       - name: Download partial reports
         uses: actions/download-artifact@v4
         with:
-          pattern: bdd-test-reports-movies-api-*        # ← replace movies-api with your service name
+          pattern: bdd-test-reports-movies-api-* # ← replace movies-api with your service name
           path: reports/junit
           merge-multiple: true
 
       - name: Publish merged test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: ./publish-reports #LukenLarra/RedHat-BDD-Framework/publish-reports@main
         with:
-          files: reports/junit/*.xml
+          report_path: "reports/junit/*.xml"
