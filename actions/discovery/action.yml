@@ -27,7 +27,7 @@ runs:
       id: discover
       shell: bash
       run: |
-        uv run --with pyyaml "${{ github.action_path }}/../scripts/discover_features.py" "${{ inputs.bdd_config }}" > bdd_matrix_features.json
+        uv run --with pyyaml "${{ github.action_path }}/../../scripts/discover_features.py" "${{ inputs.bdd_config }}" > bdd_matrix_features.json
         MATRIX_JSON=$(cat bdd_matrix_features.json)
         echo "Discovered features: $MATRIX_JSON"
 
