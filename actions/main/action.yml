@@ -53,6 +53,7 @@ runs:
     - name: Install BDD framework dependencies
       shell: bash
       run: |
+        REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
         if [[ "${{ github.action_path }}" == /mnt/* ]]; then
           BDD_VENV=/tmp/bdd-framework-venv
         else
@@ -67,11 +68,11 @@ runs:
         fi
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
-          -r "${{ github.action_path }}/requirements.txt" \
-          -r "${{ github.action_path }}/tests/requirements.txt"
+          -r "${REPO_ROOT}/requirements.txt" \
+          -r "${REPO_ROOT}/tests/requirements.txt"
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
-          "${{ github.action_path }}"
+          "${REPO_ROOT}"
         if [[ -n "${{ inputs.test_requirements }}" ]]; then
           uv pip install --quiet \
             --python "${BDD_VENV}/bin/python" \
@@ -87,10 +88,11 @@ runs:
     - name: Run BDD Framework
       shell: bash
       run: |
+        REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
         if [[ -n "${{ inputs.feature_file }}" ]]; then
-          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
+          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
         else
-          "${BDD_VENV_PATH}/bin/python" "${{ github.action_path }}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
         fi
 
     - name: Check for test reports
