@@ -117,7 +117,7 @@ jobs:
 
       # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
-        uses: ./ #LukenLarra/RedHat-BDD-Framework@main
+        uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
         with:
           service: "movies-api"
 
@@ -134,7 +134,7 @@ jobs:
 
       # ── 5. Publish the results ──────────────────────────────────────────
       - name: Publish Test Results
-        uses: ./publish-reports #LukenLarra/RedHat-BDD-Framework/publish-reports@main
+        uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
         if: always()
         with:
           report_path: "reports/junit/*.xml"

@@ -35,7 +35,7 @@ jobs:
 
       - name: Discover BDD Features
         id: discover
-        uses: ./discovery # LukenLarra/RedHat-BDD-Framework/discovery@main
+        uses: ./actions/discovery # LukenLarra/RedHat-BDD-Framework/actions/discovery@main
 
   # ============================================================
   # PHASE 2 — PARALLEL EXECUTION
@@ -152,7 +152,7 @@ jobs:
       # Only change `service`. Everything else is handled by the framework.
       # ──────────────────────────────────────────────────────────────────
       - name: Run BDD Framework (Parallel)
-        uses: ./ #LukenLarra/RedHat-BDD-Framework@main
+        uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
         with:
           service: "movies-api" # ← your service name
           feature_file: ${{ matrix.feature_file }}
@@ -190,6 +190,6 @@ jobs:
           merge-multiple: true
 
       - name: Publish merged test results
-        uses: ./publish-reports #LukenLarra/RedHat-BDD-Framework/publish-reports@main
+        uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
         with:
           report_path: "reports/junit/*.xml"

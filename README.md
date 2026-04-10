@@ -145,7 +145,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       # 3. Call the framework — DATABASE_URL is inherited from the job env
-      - uses: LukenLarra/RedHat-BDD-Framework@main
+      - uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
         with:
           service: "my-service"
           # python_version: "3.12"                # optional, lets uv build the venv using a specific python version
@@ -173,7 +173,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: discover
-        uses: LukenLarra/RedHat-BDD-Framework/discovery@main
+        uses: LukenLarra/RedHat-BDD-Framework/actions/discovery@main
 
   # 2. Runner Job: spins up isolated machines in parallel
   parallel-bdd:
@@ -210,7 +210,7 @@ jobs:
       # [ Insert your setup steps: python, dependencies, etc. exact same as Sequential ]
 
       - name: Run BDD Framework
-        uses: LukenLarra/RedHat-BDD-Framework@main
+        uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
         with:
           service: "my-service"
           feature_file: ${{ matrix.feature_file }}
@@ -233,7 +233,7 @@ jobs:
           path: reports/junit
           merge-multiple: true
 
-      - uses: LukenLarra/RedHat-BDD-Framework/publish-reports@main
+      - uses: LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
         with:
           report_path: "reports/junit/*.xml"
 ```
