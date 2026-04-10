@@ -4,6 +4,7 @@ import time
 import dotenv
 import requests
 from openai import OpenAI
+from playwright.sync_api import sync_playwright
 
 
 def before_all(context):
@@ -34,6 +35,11 @@ def before_all(context):
                 raise Exception(f"Could not connect to API at {context.api_url}") from e
             time.sleep(1)
 
+    # Inicializar Playwright
+    context.playwright = sync_playwright().start()
+    context.browser = context.playwright.chromium.launch(headless=True)
+    context.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 
 def before_scenario(context, scenario):
     """Resets the state before each scenario"""
@@ -55,9 +61,18 @@ def before_scenario(context, scenario):
     context.response = None
     context.status_code = None
 
+    # Nuevo contexto de Playwright por cada test de frontend
+    context.browser_context = context.browser.new_context()
+    context.page = context.browser_context.new_page()
+
 
 def after_scenario(context, scenario):
-    """Executes after each scenario"""
+    """Se ejecuta después de cada escenario"""
+    if hasattr(context, "page"):
+        context.page.close()
+    if hasattr(context, "browser_context"):
+        context.browser_context.close()
+
     if scenario.status == "failed":
         print(f"\n✗ Failed scenario: {scenario.name}")
         if hasattr(context, "response"):
@@ -67,5 +82,9 @@ def after_scenario(context, scenario):
 
 
 def after_all(context):
-    """Executes once after all tests"""
-    print("\n✓ Tests completed")
+    """Se ejecuta una vez después de todos los tests"""
+    if hasattr(context, "browser"):
+        context.browser.close()
+    if hasattr(context, "playwright"):
+        context.playwright.stop()
+    print("\n✓ Tests completados")
