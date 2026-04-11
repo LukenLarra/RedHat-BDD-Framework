@@ -83,37 +83,45 @@ jobs:
       # use specific steps instead of the `services` block.
       # Replace with your own start commands.
       - name: Start backend
-        run: python backend/app.py &
+        run: |
+          nohup python backend/app.py > backend.log 2>&1 &
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Backend ready"
+              exit 0
+            fi
+            echo "  attempt $i/30..."
+            sleep 1
+          done
+          echo "Backend failed to start. Logs:"
+          cat backend.log
+          exit 1
         env:
           API_HOST: "0.0.0.0"
           API_PORT: "8000"
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
-      - name: Wait for backend to be ready
-        run: |
-          echo "Waiting for backend..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/health && echo "Backend ready" && break
-            echo "  attempt $i/30..."
-            sleep 1
-          done
-
       - name: Start frontend
-        run: node server.js &
+        run: |
+          nohup node server.js > frontend.log 2>&1 &
+          echo "Waiting for frontend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+          echo "Frontend failed to start. Logs:"
+          cat frontend.log
+          exit 1
         working-directory: frontend
         env:
           PORT: "3000"
           NODE_ENV: "development"
           API_URL: "http://localhost:8000"
-
-      - name: Wait for frontend to be ready
-        run: |
-          echo "Waiting for frontend..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:3000 && echo "Frontend ready" && break
-            echo "  attempt $i/30..."
-            sleep 2
-          done
 
       # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
@@ -135,6 +143,6 @@ jobs:
       # ── 5. Publish the results ──────────────────────────────────────────
       - name: Publish Test Results
         uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
-        if: always()
+        if: ${{ always() && !env.ACT }}
         with:
           report_path: "reports/junit/*.xml"
