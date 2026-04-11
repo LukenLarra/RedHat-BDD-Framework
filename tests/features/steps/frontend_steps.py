@@ -155,6 +155,81 @@ def get_interactive_dom_markdown(page):
     return "\n".join(markdown_lines)
 
 
+def get_interactive_dom_markdown(page):
+    """Convierte el DOM de la página a un pseudo-markdown inyectando atributos ai-id
+    para identificar inequívocamente con qué elementos interactuar."""
+    html_content = page.content()
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Remover ruido que no aporta UI interactiva
+    for tag in soup(["script", "style", "svg", "noscript", "meta", "link", "head"]):
+        tag.decompose()
+
+    # Identificar elementos interactivos e inyectar in memory ai-id
+    interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
+
+    # Evaluar los selectores inyectando ai-id en el DOM de Playwright
+    # Hacemos esto inyectando el ID directamente en el navegador real para que luego coincida.
+    page.evaluate("""() => {
+        let elements = document.querySelectorAll('input, button, a, select, textarea');
+        elements.forEach((el, index) => {
+            el.setAttribute('ai-id', String(index + 1));
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+                el.setAttribute('dynamic-value', el.value || '');
+            }
+        });
+    }""")
+
+    # Volvemos a obtener el HTML tras inyectar ai-id y values localmente
+    soup = BeautifulSoup(page.content(), "html.parser")
+    interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
+
+    markdown_lines = ["## Elementos Interactivos:\n"]
+    for element in interactive_elements:
+        ai_id = element.get("ai-id")
+        if not ai_id:
+            continue
+
+        el_type = element.name.upper()
+        el_text = element.get_text(strip=True)[:100]
+        el_placeholder = element.get("placeholder", "")
+        el_value = element.get("dynamic-value", "")
+
+        info = f"[{el_type}]"
+        if el_text and el_type not in ["INPUT", "TEXTAREA", "SELECT"]:
+            info = f"[{el_type}: {el_text}]"
+        else:
+            parts = []
+            if el_placeholder:
+                parts.append(f"placeholder='{el_placeholder}'")
+            if el_value:
+                parts.append(f"current_value='{el_value}'")
+            elif el_text and el_type in ["SELECT", "TEXTAREA"]:
+                parts.append(f"current_value='{el_text}'")
+
+            if parts:
+                info = f"[{el_type}: {', '.join(parts)}]"
+
+        markdown_lines.append(f'- {info} (ai-id="{ai_id}")')
+
+    # Add error/success messages tracking to markdown to provide feedback to LLM
+    alert_elements = soup.find_all(
+        class_=lambda c: (
+            c and ("error" in c.lower() or "success" in c.lower() or "alert" in c.lower())
+        )
+    )
+    if alert_elements:
+        markdown_lines.append("\n## Mensajes del Sistema:\n")
+        for alert in alert_elements:
+            markdown_lines.append(alert.get_text(strip=True))
+
+    markdown_lines.append("\n## Contenido de la página (texto):\n")
+    visible_text = soup.get_text(separator="\n", strip=True)[:1500]
+    markdown_lines.append(visible_text)
+
+    return "\n".join(markdown_lines)
+
+
 @given("the frontend is running")
 def step_impl_frontend_running(context):
     """Check that the frontend is responding."""
