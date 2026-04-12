@@ -108,29 +108,29 @@ def write_summary(reports, output_path, patterns):
     skipped = [tc for tc in all_testcases if tc["status"] == "skipped"]
 
     lines = [
-        "# BDD CI Test Report Summary",
+        "# BDD CI Test Report Summary 🚦",
         "",
-        f"Generated: {datetime.datetime.utcnow().isoformat()}Z",
-        f"Report files: `{', '.join(patterns)}`",
+        f"**Generated:** {datetime.datetime.utcnow().isoformat()}Z",
+        f"**Report files:** `{', '.join(patterns)}`",
         "",
-        "## Totals",
+        "## Totals 📊",
         "",
         "| Metric | Value |",
         "|---|---:|",
-        f"| Test suites | {total_suites} |",
-        f"| Tests executed | {total_tests} |",
-        f"| Passed | {total_passed} |",
-        f"| Failed | {total_failures} |",
-        f"| Errors | {total_errors} |",
-        f"| Skipped | {total_skipped} |",
-        f"| Total duration | {format_duration(total_time)} |",
+        f"| 🧪 Test suites | {total_suites} |",
+        f"| ✅ Tests executed | {total_tests} |",
+        f"| ✅ Passed | {total_passed} |",
+        f"| ❌ Failed | {total_failures} |",
+        f"| ⚠️ Errors | {total_errors} |",
+        f"| ⏭️ Skipped | {total_skipped} |",
+        f"| ⏱️ Total duration | {format_duration(total_time)} |",
         "",
     ]
 
     if failures:
         lines.extend(
             [
-                "## Failed scenarios",
+                "## Failed scenarios ❌",
                 "",
                 "| Scenario | Suite | Location | Message |",
                 "|---|---|---|---|",
@@ -153,7 +153,7 @@ def write_summary(reports, output_path, patterns):
     if skipped:
         lines.extend(
             [
-                "## Skipped scenarios",
+                "## Skipped scenarios ⏭️",
                 "",
                 "| Scenario | Suite | Reason |",
                 "|---|---|---|",
@@ -166,15 +166,6 @@ def write_summary(reports, output_path, patterns):
             lines.append("")
             lines.append(f"_And {len(skipped) - 25} more skipped scenarios not shown._")
         lines.append("")
-
-    lines.extend(
-        [
-            "## Notes",
-            "",
-            "- Este resumen se genera a partir de los archivos JUnit XML producidos por Behave.",
-            "- Los archivos de reporte originales se conservan y se pueden descargar desde los artefactos de CI.",
-        ]
-    )
 
     output_dir = os.path.dirname(output_path)
     if output_dir and not os.path.isdir(output_dir):
@@ -217,7 +208,7 @@ def main():
         if os.path.dirname(summary_path):
             os.makedirs(os.path.dirname(summary_path), exist_ok=True)
         with open(summary_path, "w", encoding="utf-8") as handle:
-            handle.write("# BDD CI Test Report Summary\n\n")
+            handle.write("# BDD CI Test Report Summary 🚨\n\n")
             handle.write("No JUnit XML reports were found for the pattern(s):\n")
             for pattern in patterns:
                 handle.write(f"- `{pattern}`\n")
