@@ -1,3 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "redhat-bdd-framework"
+version = "0.1.0"
+description = "Stack-agnostic BDD test framework for CI workflows"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "behave==1.2.6",
+    "PyYAML==6.0.1",
+    "requests==2.31.0",
+]
+
+[project.scripts]
+bdd-framework = "redhat_bdd_framework.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["redhat_bdd_framework*"]
+
 # Configuración de herramientas de Python
 # ========================================
 
@@ -48,7 +70,7 @@ ignore = [
 
 # Configuración de isort (ordenamiento de imports)
 [tool.ruff.lint.isort]
-known-first-party = ["bdd_framework"]
+known-first-party = ["bdd_framework", "redhat_bdd_framework"]
 
 [tool.ruff.format]
 # Configuración del formateador (compatible con black)
