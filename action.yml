@@ -70,6 +70,7 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             "${{ inputs.service_package }}"
         fi
+        "${BDD_VENV}/bin/playwright" install chromium
         echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
