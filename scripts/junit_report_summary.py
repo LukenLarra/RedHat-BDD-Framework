@@ -103,9 +103,55 @@ def write_summary(reports, output_path, patterns):
     total_passed = sum(report["passed"] for report in reports)
     total_time = sum(report["time"] for report in reports)
     total_suites = sum(report["suites"] for report in reports)
+    total_report_files = len(reports)
     all_testcases = [tc for report in reports for tc in report["testcases"]]
     failures = [tc for tc in all_testcases if tc["status"] == "failed"]
     skipped = [tc for tc in all_testcases if tc["status"] == "skipped"]
+
+    suite_stats = {}
+    feature_stats = {}
+
+    def feature_key(testcase):
+        feature_file = testcase["file"]
+        if feature_file and feature_file.endswith(".feature"):
+            return feature_file
+        if testcase["classname"] and testcase["classname"].endswith(".feature"):
+            return testcase["classname"]
+        return testcase["suite"]
+
+    for report in reports:
+        for testcase in report["testcases"]:
+            suite = testcase["suite"]
+            stats = suite_stats.setdefault(
+                suite,
+                {
+                    "tests": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "errors": 0,
+                    "skipped": 0,
+                    "time": 0.0,
+                },
+            )
+            stats["tests"] += 1
+            stats[testcase["status"]] += 1
+            stats["time"] += testcase["time"]
+
+            feature = feature_key(testcase)
+            fstats = feature_stats.setdefault(
+                feature,
+                {
+                    "tests": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "errors": 0,
+                    "skipped": 0,
+                    "time": 0.0,
+                },
+            )
+            fstats["tests"] += 1
+            fstats[testcase["status"]] += 1
+            fstats["time"] += testcase["time"]
 
     lines = [
         "# BDD CI Test Report Summary 🚦",
@@ -117,6 +163,7 @@ def write_summary(reports, output_path, patterns):
         "",
         "| Metric | Value |",
         "|---|---:|",
+        f"| 📄 Report files | {total_report_files} |",
         f"| 🧪 Test suites | {total_suites} |",
         f"| ✅ Tests executed | {total_tests} |",
         f"| ✅ Passed | {total_passed} |",
@@ -125,7 +172,29 @@ def write_summary(reports, output_path, patterns):
         f"| ⏭️ Skipped | {total_skipped} |",
         f"| ⏱️ Total duration | {format_duration(total_time)} |",
         "",
+        "## Suite breakdown 🧩",
+        "",
+        "| Suite | Tests | Passed | Failed | Errors | Skipped | Duration |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
+    for suite, stats in sorted(suite_stats.items(), key=lambda item: item[0]):
+        lines.append(
+            f"| {suite} | {stats['tests']} | {stats['passed']} | {stats['failed']} | {stats['errors']} | {stats['skipped']} | {format_duration(stats['time'])} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Feature duration ⏱️🧩",
+            "",
+            "| Feature | Tests | Passed | Failed | Errors | Skipped | Duration |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for feature, stats in sorted(feature_stats.items(), key=lambda item: item[0]):
+        lines.append(
+            f"| {feature} | {stats['tests']} | {stats['passed']} | {stats['failed']} | {stats['errors']} | {stats['skipped']} | {format_duration(stats['time'])} |"
+        )
+    lines.append("")
 
     if failures:
         lines.extend(
