@@ -39,6 +39,13 @@ npm install
 python bdd_framework.py --config framework.yml
 ```
 
+- **As an installed package (recommended):**
+
+```bash
+pip install -e .
+bdd-framework --config framework.yml
+```
+
 ---
 
 ## 📦 **Complete Installation**
@@ -186,6 +193,8 @@ jobs:
 The framework installs its own dependencies (`behave`, `requests`, `PyYAML`) in an **isolated virtual environment**. Behave runs inside that venv, so any `import` in your step files must resolve there.
 
 If your step files import packages that are not bundled with the framework, provide a `requirements.txt` via the `test_requirements` input. The framework will install those packages into its venv before running the tests.
+
+For import resolution of project modules, the framework sets `PYTHONPATH` in the test subprocess environment to include the project root. This is automatic and does not require adding `PYTHONPATH` manually in `framework.yml`.
 
 ---
 
