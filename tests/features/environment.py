@@ -41,6 +41,22 @@ def before_all(context):
     context.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
+def reset_test_database(context):
+    """Llama al endpoint de reset de pruebas para devolver la BD al estado inicial."""
+    if os.getenv("ENABLE_TEST_API", "false").lower() != "true":
+        return
+
+    reset_url = f"{context.api_url}/api/test/reset"
+    for _attempt in range(3):
+        try:
+            response = requests.post(reset_url, timeout=5)
+            if response.status_code == 200:
+                return
+        except requests.exceptions.RequestException:
+            time.sleep(1)
+    raise Exception(f"No se pudo resetear la base de datos de pruebas en {reset_url}")
+
+
 def before_scenario(context, scenario):
     """Resets the state before each scenario"""
     # Allow skipping tests marked with @skip
@@ -57,6 +73,8 @@ def before_scenario(context, scenario):
     if "ai" in scenario.effective_tags and not getattr(context, "openai_client", None):
         scenario.skip("Saltado: requiere @ai pero no hay GROQ_API_KEY configurada")
         return
+
+    reset_test_database(context)
 
     context.response = None
     context.status_code = None
@@ -87,4 +105,6 @@ def after_all(context):
         context.browser.close()
     if hasattr(context, "playwright"):
         context.playwright.stop()
+
+    reset_test_database(context)
     print("\n✓ Tests completados")
