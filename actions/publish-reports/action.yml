@@ -22,6 +22,10 @@ inputs:
     description: "Name of the uploaded summary artifact."
     required: false
     default: "bdd-test-summary"
+  summary_to_job:
+    description: "Whether to write the generated summary into the GitHub Actions job summary."
+    required: false
+    default: "true"
 runs:
   using: composite
   steps:
@@ -37,6 +41,16 @@ runs:
         python "${{ github.workspace }}/scripts/junit_report_summary.py" \
           --report-path "${{ inputs.report_path }}" \
           --output "${{ inputs.summary_output }}"
+
+    - name: Write summary to GitHub job summary
+      if: ${{ always() && inputs.summary_to_job == 'true' }}
+      shell: bash
+      run: |
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_output }}" ]; then
+          cat "${{ inputs.summary_output }}" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "GitHub job summary is not available in this runner." >&2
+        fi
 
     - name: Upload summary artifact
       if: ${{ always() && inputs.upload_summary_artifact == 'true' }}

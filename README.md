@@ -238,6 +238,8 @@ jobs:
           report_path: "reports/junit/*.xml"
           # The action now also generates a Markdown summary and uploads it as an artifact.
           # summary_output: "reports/bdd-test-summary.md"
+          # summary_to_job: "true"
+          # summary_artifact_name: "bdd-test-summary"
           # summary_artifact_name: "bdd-test-summary"
 ```
 
