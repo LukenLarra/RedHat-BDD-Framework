@@ -81,20 +81,20 @@ def get_interactive_dom_markdown(page):
 
 
 def get_interactive_dom_markdown(page):
-    """Convierte el DOM de la página a un pseudo-markdown inyectando atributos ai-id
-    para identificar inequívocamente con qué elementos interactuar."""
+    """Convert the page DOM to pseudo-markdown by injecting ai-id attributes
+    to uniquely identify interactive elements."""
     html_content = page.content()
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # Remover ruido que no aporta UI interactiva
+    # Remove noise that does not contribute to interactive UI
     for tag in soup(["script", "style", "svg", "noscript", "meta", "link", "head"]):
         tag.decompose()
 
-    # Identificar elementos interactivos e inyectar in memory ai-id
+    # Identify interactive elements and inject ai-id attributes
     interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
 
-    # Evaluar los selectores inyectando ai-id en el DOM de Playwright
-    # Hacemos esto inyectando el ID directamente en el navegador real para que luego coincida.
+    # Evaluate selectors by injecting ai-id into the Playwright DOM
+    # We do this by injecting the ID directly into the real browser DOM so it will match later.
     page.evaluate("""() => {
         let elements = document.querySelectorAll('input, button, a, select, textarea');
         elements.forEach((el, index) => {
@@ -105,7 +105,7 @@ def get_interactive_dom_markdown(page):
         });
     }""")
 
-    # Volvemos a obtener el HTML tras inyectar ai-id y values localmente
+    # Re-fetch the HTML after injecting ai-id and values locally
     soup = BeautifulSoup(page.content(), "html.parser")
     interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
 
@@ -144,11 +144,11 @@ def get_interactive_dom_markdown(page):
         )
     )
     if alert_elements:
-        markdown_lines.append("\n## Mensajes del Sistema:\n")
+        markdown_lines.append("\n## System Messages:\n")
         for alert in alert_elements:
             markdown_lines.append(alert.get_text(strip=True))
 
-    markdown_lines.append("\n## Contenido de la página (texto):\n")
+    markdown_lines.append("\n## Page Content (text):\n")
     visible_text = soup.get_text(separator="\n", strip=True)[:1500]
     markdown_lines.append(visible_text)
 
