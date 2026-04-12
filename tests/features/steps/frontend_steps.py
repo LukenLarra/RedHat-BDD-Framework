@@ -1,38 +1,25 @@
 import json
-import time
 
 import requests
 from behave import given, then, when
 from bs4 import BeautifulSoup
 
 
-def get_sanitized_dom(page):
-    """Limpia el HTML para mantener solo la estructura importante de cara al LLM
-    y minimizar tokens consumidos."""
-    html_content = page.content()
-    soup = BeautifulSoup(html_content, "html.parser")
-
-    for tag in soup(["script", "style", "svg", "noscript", "meta", "link"]):
-        tag.decompose()
-
-    return str(soup)
-
-
 def get_interactive_dom_markdown(page):
-    """Convierte el DOM de la página a un pseudo-markdown inyectando atributos ai-id
-    para identificar inequívocamente con qué elementos interactuar."""
+    """Convert the page DOM to pseudo-markdown by injecting ai-id attributes
+    to uniquely identify interactive elements."""
     html_content = page.content()
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # Remover ruido que no aporta UI interactiva
+    # Remove noise that does not contribute to interactive UI
     for tag in soup(["script", "style", "svg", "noscript", "meta", "link", "head"]):
         tag.decompose()
 
-    # Identificar elementos interactivos e inyectar in memory ai-id
+    # Identify interactive elements and inject ai-id attributes
     interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
 
-    # Evaluar los selectores inyectando ai-id en el DOM de Playwright
-    # Hacemos esto inyectando el ID directamente en el navegador real para que luego coincida.
+    # Evaluate selectors by injecting ai-id into the Playwright DOM
+    # We do this by injecting the ID directly into the real browser DOM so it will match later.
     page.evaluate("""() => {
         let elements = document.querySelectorAll('input, button, a, select, textarea');
         elements.forEach((el, index) => {
@@ -43,7 +30,7 @@ def get_interactive_dom_markdown(page):
         });
     }""")
 
-    # Volvemos a obtener el HTML tras inyectar ai-id y values localmente
+    # Re-fetch the HTML after injecting ai-id and values locally
     soup = BeautifulSoup(page.content(), "html.parser")
     interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
 
@@ -82,11 +69,11 @@ def get_interactive_dom_markdown(page):
         )
     )
     if alert_elements:
-        markdown_lines.append("\n## Mensajes del Sistema:\n")
+        markdown_lines.append("\n## System Messages:\n")
         for alert in alert_elements:
             markdown_lines.append(alert.get_text(strip=True))
 
-    markdown_lines.append("\n## Contenido de la página (texto):\n")
+    markdown_lines.append("\n## Page Content (text):\n")
     visible_text = soup.get_text(separator="\n", strip=True)[:1500]
     markdown_lines.append(visible_text)
 
@@ -95,19 +82,17 @@ def get_interactive_dom_markdown(page):
 
 @given("the frontend is running")
 def step_impl_frontend_running(context):
-    """Comprueba que el frontend responda."""
+    """Check that the frontend is responding."""
     try:
         response = requests.get(context.frontend_url, timeout=5)
         response.raise_for_status()
     except Exception as e:
-        raise AssertionError(
-            f"El frontend no está disponible en {context.frontend_url}: {e}"
-        ) from e
+        raise AssertionError(f"The frontend is not available at {context.frontend_url}: {e}") from e
 
 
 @when("I open the frontend homepage")
 def step_impl_open_frontend_homepage(context):
-    print(f"Navegando a frontend: {context.frontend_url}")
+    print(f"Navigating to frontend: {context.frontend_url}")
     context.page.goto(context.frontend_url)
     context.page.wait_for_load_state("networkidle")
 
@@ -115,20 +100,20 @@ def step_impl_open_frontend_homepage(context):
 @when('the AI acts on the page to "{goal}"')
 def step_impl_ai_acts_on_page(context, goal):
     """
-    Bucle ReAct (Razón + Acción) donde Llama-4 Scout decide qué clicks o fills hacer
-    para cumplir el objetivo semántico propuesto.
+    ReAct loop to decide which clicks or fills to perform
+    in order to achieve the requested semantic goal on the page.
     """
     if not hasattr(context, "openai_client") or context.openai_client is None:
-        raise ValueError("Cliente OpenAI no configurado (falta API KEY)")
+        raise ValueError("OpenAI client not configured (missing API key)")
 
     step_num = 1
     while True:
-        print(f"\n🔄 Step {step_num}: AI analyzing page for goal: '{goal}'")
+        print(f"\n🔄 Step {step_num}: AI analyzing the page for goal: '{goal}'")
 
-        # 1. Obtener DOM en pseudo-markdown con IDs inyectados
+        # 1. Get the DOM as pseudo-markdown with injected ai-id attributes
         dom_markdown = get_interactive_dom_markdown(context.page)
 
-        # 2. Prompt Llama-4 Scout
+        # 2. Prepare the prompt
         prompt = f"""You are an intelligent web automation agent. Your goal is: "{goal}"
 
 Current page format:
@@ -155,7 +140,13 @@ IMPORTANT: After submitting a form with the filled steps, do not immediately ass
             result_text = response.choices[0].message.content
             action_data = json.loads(result_text)
         except Exception as e:
-            print(f"❌ Error de LLM: {e}")
+            import groq
+
+            if isinstance(e, groq.RateLimitError):
+                context.scenario.skip("Skipped: Groq rate limit reached")
+                return
+
+            print(f"❌ LLM error: {e}")
             raise
 
         print(f"  📋 Reasoning: {action_data.get('reasoning', 'N/A')}")
@@ -172,17 +163,15 @@ IMPORTANT: After submitting a form with the filled steps, do not immediately ass
         selector = f'[ai-id="{ai_id}"]'
 
         if action == "click":
-            print(f"  🎯 Action: Clicking ai-id={ai_id}")
+            print(f"  🎯 Action: clicking ai-id={ai_id}")
             context.page.locator(selector).click()
             context.page.wait_for_load_state("networkidle")
-            time.sleep(0.5)
 
         elif action == "fill":
             value = action_data.get("value", "")
-            print(f"  🎯 Action: Filling ai-id={ai_id} with '{value}'")
+            print(f"  🎯 Action: filling ai-id={ai_id} with '{value}'")
             context.page.locator(selector).fill(value)
             context.page.wait_for_load_state("networkidle")
-            time.sleep(0.5)
 
         step_num += 1
 
@@ -190,42 +179,51 @@ IMPORTANT: After submitting a form with the filled steps, do not immediately ass
 @then('the AI visually confirms that "{condition}"')
 def step_impl_ai_visually_confirms(context, condition):
     """
-    Envía el DOM limpio al LLM (Groq) para verificar si se cumple la condición semántica.
+    Sends the cleaned DOM to the LLM (Groq) to verify whether the semantic condition holds.
     """
     if not hasattr(context, "openai_client") or context.openai_client is None:
-        raise ValueError("Cliente OpenAI/Groq no configurado (falta API KEY)")
+        raise ValueError("OpenAI/Groq client not configured (missing API key)")
 
     clean_html = get_interactive_dom_markdown(context.page)
 
     prompt = f"""
-Eres un analista de QA automatizado. Tienes el estatus pseudo-markdown actual:
+You are an automated QA analyst. Here is the current pseudo-markdown state:
 ```markdown
 {clean_html}
 ```
 
-El usuario quiere comprobar lo siguiente: "{condition}"
+The user wants to verify the following condition: "{condition}"
 
-Responde ÚNICAMENTE en JSON con este formato exacto:
+Answer ONLY with valid JSON using this exact format:
 {{
   "confirmed": true|false,
-  "reason": "Explicación breve de por qué se cumple o no en base al HTML provisto"
+  "reason": "Brief explanation of why the condition is met or not based on the provided HTML"
 }}
     """
 
-    response = context.openai_client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.0,
-        response_format={"type": "json_object"},
-    )
+    try:
+        response = context.openai_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        result_text = response.choices[0].message.content
+    except Exception as e:
+        import groq
 
-    result_text = response.choices[0].message.content
+        if isinstance(e, groq.RateLimitError):
+            context.scenario.skip("Skipped: Groq rate limit reached")
+            return
+
+        raise
+
     try:
         result = json.loads(result_text)
     except Exception as e:
-        raise Exception(f"La respuesta de la IA no fue un JSON válido: {result_text}") from e
+        raise Exception(f"The AI response was not valid JSON: {result_text}") from e
 
     assert result.get("confirmed") is True, (
-        f"Verificación de IA falló.\nRazón: {result.get('reason')}\nDOM: {clean_html[:200]}"
+        f"AI verification failed.\nReason: {result.get('reason')}\nDOM: {clean_html[:200]}"
     )
     print(f"✓ Confirmado por LLM: {result.get('reason')}")
