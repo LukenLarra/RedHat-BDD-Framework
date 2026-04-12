@@ -108,7 +108,6 @@ def write_summary(reports, output_path, patterns):
     failures = [tc for tc in all_testcases if tc["status"] == "failed"]
     skipped = [tc for tc in all_testcases if tc["status"] == "skipped"]
 
-    suite_stats = {}
     feature_stats = {}
 
     def feature_key(testcase):
@@ -121,22 +120,6 @@ def write_summary(reports, output_path, patterns):
 
     for report in reports:
         for testcase in report["testcases"]:
-            suite = testcase["suite"]
-            stats = suite_stats.setdefault(
-                suite,
-                {
-                    "tests": 0,
-                    "passed": 0,
-                    "failed": 0,
-                    "errors": 0,
-                    "skipped": 0,
-                    "time": 0.0,
-                },
-            )
-            stats["tests"] += 1
-            stats[testcase["status"]] += 1
-            stats["time"] += testcase["time"]
-
             feature = feature_key(testcase)
             fstats = feature_stats.setdefault(
                 feature,
@@ -172,24 +155,11 @@ def write_summary(reports, output_path, patterns):
         f"| ⏭️ Skipped | {total_skipped} |",
         f"| ⏱️ Total duration | {format_duration(total_time)} |",
         "",
-        "## Suite breakdown 🧩",
+        "## Feature breakdown ⏱️🧩",
         "",
-        "| Suite | Tests | Passed | Failed | Errors | Skipped | Duration |",
+        "| Feature | Tests | Passed | Failed | Errors | Skipped | Duration |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
-    for suite, stats in sorted(suite_stats.items(), key=lambda item: item[0]):
-        lines.append(
-            f"| {suite} | {stats['tests']} | {stats['passed']} | {stats['failed']} | {stats['errors']} | {stats['skipped']} | {format_duration(stats['time'])} |"
-        )
-    lines.extend(
-        [
-            "",
-            "## Feature duration ⏱️🧩",
-            "",
-            "| Feature | Tests | Passed | Failed | Errors | Skipped | Duration |",
-            "|---|---:|---:|---:|---:|---:|---:|",
-        ]
-    )
     for feature, stats in sorted(feature_stats.items(), key=lambda item: item[0]):
         lines.append(
             f"| {feature} | {stats['tests']} | {stats['passed']} | {stats['failed']} | {stats['errors']} | {stats['skipped']} | {format_duration(stats['time'])} |"
