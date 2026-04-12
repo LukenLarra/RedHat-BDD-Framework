@@ -29,12 +29,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      with:
-        files: ${{ inputs.report_path }}
-        check_name: "BDD Test Results"
-
     - name: Generate Markdown summary
       shell: bash
       run: |
@@ -42,7 +36,7 @@ runs:
           --report-path "${{ inputs.report_path }}" \
           --output "${{ inputs.summary_output }}"
 
-    - name: Write summary to GitHub job summary
+    - name: Publish test results
       if: ${{ always() && inputs.summary_to_job == 'true' }}
       shell: bash
       run: |
