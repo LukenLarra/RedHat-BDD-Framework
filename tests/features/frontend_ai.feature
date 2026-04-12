@@ -11,5 +11,5 @@ Feature: Validaciones E2E del Frontend con IA
   Scenario: Rellenar el formulario para interactuar con la web
     Given the frontend is running
     When I open the frontend homepage
-    When the AI acts on the page to "fill the add movie form with title 'The Dark Knight', year '2008', director 'Nolan' and click the submit button"
-    Then the AI visually confirms that "the movie 'The Dark Knight' appears in the movie catalog list"
+    When the AI acts on the page to "fill the add movie form with title 'Interstellar', year '2014', director 'Christopher Nolan' and click the submit button"
+    Then the AI visually confirms that "the movie 'Interstellar' appears in the movie catalog list"

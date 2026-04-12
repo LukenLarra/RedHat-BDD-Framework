@@ -4,7 +4,7 @@ Módulo de base de datos PostgreSQL con SQLAlchemy ORM para gestión de películ
 
 import os
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
 # Leer DATABASE_URL de variables de entorno (configurada por el framework)
@@ -37,14 +37,23 @@ class Movie(Base):
         return {"id": self.id, "title": self.title, "year": self.year, "director": self.director}
 
 
-def init_db():
-    """Inicializa la base de datos y crea las tablas si no existen"""
+def init_db(reset: bool = False):
+    """Inicializa la base de datos y crea las tablas si no existen.
+
+    Si reset es True, vacía la tabla de películas y reinstala los datos de ejemplo.
+    """
     # Crear todas las tablas definidas en Base
     Base.metadata.create_all(engine)
 
-    # Insertar datos de ejemplo si la tabla está vacía
     session = SessionLocal()
     try:
+        if reset:
+            if engine.dialect.name == "postgresql":
+                session.execute(text("TRUNCATE TABLE movies RESTART IDENTITY CASCADE"))
+            else:
+                session.query(Movie).delete()
+            session.commit()
+
         movie_count = session.query(Movie).count()
         if movie_count == 0:
             sample_movies = [

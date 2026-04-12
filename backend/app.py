@@ -112,6 +112,19 @@ async def health_check():
     return {"status": "healthy", "service": "movies-api"}
 
 
+@app.post("/api/test/reset")
+async def reset_test_database():
+    """Resetear la base de datos a estado inicial solo para pruebas."""
+    if os.getenv("ENABLE_TEST_API", "false").lower() != "true":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    try:
+        database.init_db(reset=True)
+        return {"success": True, "message": "Base de datos de prueba restaurada"}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+
+
 if __name__ == "__main__":
     import uvicorn
 
