@@ -236,6 +236,9 @@ jobs:
       - uses: LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
         with:
           report_path: "reports/junit/*.xml"
+          # The action now also generates a Markdown summary and uploads it as an artifact.
+          # summary_output: "reports/bdd-test-summary.md"
+          # summary_artifact_name: "bdd-test-summary"
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
