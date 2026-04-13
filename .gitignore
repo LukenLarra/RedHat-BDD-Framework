@@ -38,6 +38,12 @@ reports/
 .behave/
 allure-results/
 
+# Generated artifacts
+bdd_matrix_features.json
+build/
+*.egg-info/
+uv.lock
+
 # act (GitHub Actions runner)
 .secrets
 .env.act

@@ -1,0 +1,18 @@
+name: "RedHat BDD Framework - Publish Reports"
+description: >
+  Helper action to publish unit test results to a pull request or commit.
+  Used by the primary workflow after downloading the generated XML files
+  from parallel or sequential runs.
+inputs:
+  report_path:
+    description: "Pattern or path to the XML test reports (e.g. 'reports/junit/*.xml')"
+    required: false
+    default: "reports/junit/*.xml"
+runs:
+  using: composite
+  steps:
+    - name: Publish test results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      with:
+        files: ${{ inputs.report_path }}
+        check_name: "BDD Test Results"

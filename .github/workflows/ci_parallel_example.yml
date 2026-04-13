@@ -1,0 +1,197 @@
+name: CI_Parallel_Example
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  # ============================================================
+  # PHASE 1 — DISCOVERY
+  # Reads your framework.yml and finds all .feature files.
+  # Outputs a JSON matrix used by Phase 2.
+  # ============================================================
+  discovery:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+      has_features: ${{ steps.discover.outputs.has_features }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Discover BDD Features
+        id: discover
+        uses: ./actions/discovery # LukenLarra/RedHat-BDD-Framework/actions/discovery@main
+
+  # ============================================================
+  # PHASE 2 — PARALLEL EXECUTION
+  # Runs one runner per feature file discovered in Phase 1.
+  # Each runner is a clean, isolated environment.
+  # ============================================================
+  bdd-tests-parallel:
+    needs: discovery
+    if: needs.discovery.outputs.has_features == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        feature_file: ${{ fromJson(needs.discovery.outputs.matrix) }}
+
+    # ── OPTIONAL: External services ──────────────────────────────────────
+    # Remove this block entirely if your service does not need external
+    # infrastructure. Add or remove individual services as needed.
+    # ─────────────────────────────────────────────────────────────────────
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: movies_db # ← your database name
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # ── OPTIONAL: Environment variables available to all steps ───────────
+    # Add any environment variables your service needs here.
+    # ─────────────────────────────────────────────────────────────────────
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── OPTIONAL: Set up your runtime ─────────────────────────────────
+      # Add the language/runtime your project needs. Remove what you don't use.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/requirements*.txt"
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      # ── REQUIRED: Install your project dependencies ────────────────────
+      # Replace with your own install commands.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Install backend dependencies
+        run: uv pip install --system -r backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # ── REQUIRED: Start your service ──────────────────────────────────
+      # Start your service in the background before running tests.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Start backend
+        run: |
+          nohup python backend/app.py > backend.log 2>&1 &
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Backend ready"
+              exit 0
+            fi
+            echo "  attempt $i/30..."
+            sleep 1
+          done
+          echo "Backend failed to start. Logs:"
+          cat backend.log
+          exit 1
+        env:
+          API_HOST: "0.0.0.0"
+          API_PORT: "8000"
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Start frontend
+        run: |
+          nohup node server.js > frontend.log 2>&1 &
+          echo "Waiting for frontend..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+          echo "Frontend failed to start. Logs:"
+          cat frontend.log
+          exit 1
+        working-directory: frontend
+        env:
+          PORT: "3000"
+          NODE_ENV: "development"
+          API_URL: "http://localhost:8000"
+
+      # ── REQUIRED: Run the BDD Framework ───────────────────────────────
+      # Only change `service`. Everything else is handled by the framework.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Run BDD Framework (Parallel)
+        uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
+        with:
+          service: "movies-api" # ← your service name
+          feature_file: ${{ matrix.feature_file }}
+          artifact_name_suffix: "-${{ strategy.job-index }}"
+          # ← Optional: path to extra Python requirements for your step files
+          # test_requirements: "tests/requirements.txt"
+          # ← Optional: install your Python service into the framework venv
+          # service_package: "."
+          # ← Optional: pin a specific Python version for the framework venv
+          # python_version: "3.11"
+
+  # ============================================================
+  # PHASE 3 — CONSOLIDATED REPORT
+  # Downloads all partial reports from Phase 2 and publishes a single summary on the PR.
+  # Your service name must match the `service` input used in Phase 2.
+  # ============================================================
+  publish_report:
+    name: Publish Test Results
+    needs: bdd-tests-parallel
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download partial reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bdd-test-reports-movies-api-* # ← replace movies-api with your service name
+          path: reports/junit
+          merge-multiple: true
+
+      - name: Publish merged test results
+        uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
+        if: ${{ always() && !env.ACT }}
+        with:
+          report_path: "reports/junit/*.xml"

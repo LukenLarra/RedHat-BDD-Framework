@@ -150,6 +150,15 @@ class BDDFramework:
                 cmd_parts[i] = f"--junit-directory={reports_path}"
 
         if extra_args:
+            for i, arg in enumerate(extra_args):
+                if not arg.startswith("-") and ".feature" in arg:
+                    parts = arg.split(":", 1)
+                    feat_path = Path(parts[0])
+                    if not feat_path.is_absolute():
+                        feat_path = self.root_path / feat_path
+                    if feat_path.exists():
+                        parts[0] = str(feat_path.absolute())
+                        extra_args[i] = ":".join(parts)
             cmd_parts.extend(extra_args)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
@@ -224,6 +233,11 @@ Usage examples:
         choices=["pretty", "plain", "json"],
         help="Behave output format",
     )
+    parser.add_argument(
+        "--feature-file",
+        type=str,
+        help="Specific feature file to execute (e.g. path/to/file.feature)",
+    )
     return parser
 
 
@@ -239,6 +253,8 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         extra_args.append("--no-capture")
     if args.format:
         extra_args.append(f"--format={args.format}")
+    if getattr(args, "feature-file", None):
+        extra_args.append(f"--feature-file={args.feature_file}")
     extra_args.extend(unknown)
 
     framework = BDDFramework(args.config)

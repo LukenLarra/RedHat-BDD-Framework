@@ -1,0 +1,44 @@
+name: "RedHat BDD Framework - Discovery"
+description: >
+  Helper action to discover all .feature files in the project.
+  Outputs a JSON array to be used in a GitHub Actions matrix strategy
+  for running BDD tests in parallel.
+inputs:
+  bdd_config:
+    description: "Path to the BDD framework config file (relative to caller workspace)"
+    required: false
+    default: "framework.yml"
+outputs:
+  matrix:
+    description: "JSON array of paths to all discovered feature files"
+    value: ${{ steps.discover.outputs.matrix }}
+  has_features:
+    description: "'true' if features were found, 'false' otherwise"
+    value: ${{ steps.discover.outputs.has_features }}
+runs:
+  using: composite
+  steps:
+    - name: Set up dependencies
+      shell: bash
+      run: |
+        command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet --break-system-packages
+
+    - name: Run Python Discovery Script
+      id: discover
+      shell: bash
+      run: |
+        uv run --with pyyaml "${{ github.action_path }}/../../scripts/discover_features.py" "${{ inputs.bdd_config }}" > bdd_matrix_features.json
+        MATRIX_JSON=$(cat bdd_matrix_features.json)
+        echo "Discovered features: $MATRIX_JSON"
+
+        # Check if the matrix has features
+        if [ "$MATRIX_JSON" = "[]" ] || [ -z "$MATRIX_JSON" ]; then
+          echo "has_features=false" >> $GITHUB_OUTPUT
+        else
+          echo "has_features=true" >> $GITHUB_OUTPUT
+        fi
+
+        # Export as multiline EOF to safely handle strings and quotes
+        echo "matrix<<EOF" >> $GITHUB_OUTPUT
+        echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT

@@ -100,7 +100,13 @@ In GitHub Actions, declare the database as a job-level `services:` container —
 
 ### CI/CD Configuration
 
-The framework is distributed as a **composite action**: it runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
+The framework is distributed as **composite actions** under `actions/` (`actions/main`, `actions/discovery`, and `actions/publish-reports`) that you can wire in your workflow:
+
+1. **Composite Action (Sequential)**: Runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
+2. **Discovery + Matrix (Parallel)**: The discovery action scans `.feature` files and outputs a JSON list. Your workflow then uses that list in a matrix strategy to run multiple jobs concurrently.
+3. **Publish Reports**: A separate action for publishing JUnit-style XML results to the GitHub check interface.
+
+#### Option A: Composite Action (Sequential execution)
 
 Declare your database as a [job-level `services:`](https://docs.github.com/en/actions/using-containerized-services) container — GitHub spins it up before the first step and tears it down when the job ends. Set `DATABASE_URL` as a job-level `env:` variable; the action and all BDD tests inherit it automatically.
 
@@ -135,15 +141,12 @@ jobs:
       - uses: actions/setup-python@v5 # Python
         with:
           python-version: "3.12"
-      # - uses: actions/setup-node@v4   # Node.js
-      # - uses: actions/setup-java@v4   # Java
-      # - uses: ruby/setup-ruby@v1      # Ruby
 
       # 2. Install YOUR project's dependencies
-      - run: pip install -r requirements.txt # or: npm install, bundle install, mvn dependency:resolve…
+      - run: pip install -r requirements.txt
 
       # 3. Call the framework — DATABASE_URL is inherited from the job env
-      - uses: LukenLarra/RedHat-BDD-Framework@main
+      - uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
         with:
           service: "my-service"
           # python_version: "3.12"                # optional, lets uv build the venv using a specific python version
@@ -151,6 +154,88 @@ jobs:
           # artifacts_log_dir: "junit"            # optional, default: junit
           # test_requirements: "tests/requirements.txt"  # optional, see below
           # service_package: "."                  # optional, install an importable package into the framework venv
+```
+
+#### Option B: Parallel Matrix Execution
+
+If your test suite is large, you can speed up CI by discovering all `.feature` files dynamically and distributing them across GitHub runners. This allows you to keep using your `services:` and exact configuration seamlessly.
+
+> Note: For this repository, each matrix runner still installs Python and Node dependencies locally. Because this stack uses interpreted languages with large dependency graphs, GitHub Actions native caching is usually faster than uploading/downloading full dependency artifacts between separate runners. Still, evaluate your own workflow: if your project can install shared dependencies once before the parallel matrix, that may be worth trying.
+
+```yaml
+# .github/workflows/ci_parallel_example.yml in YOUR repository
+jobs:
+  # 1. Discovery Job: calculates the JSON matrix dynamically
+  discovery:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+      has_features: ${{ steps.discover.outputs.has_features }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: discover
+        uses: LukenLarra/RedHat-BDD-Framework/actions/discovery@main
+
+  # 2. Runner Job: spins up isolated machines in parallel
+  parallel-bdd:
+    needs: discovery
+    if: needs.discovery.outputs.has_features == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        feature_file: ${{ fromJson(needs.discovery.outputs.matrix) }}
+
+    services:
+      postgres: # Works perfectly with matrix natively
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: my_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/my_db"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # [ Insert your setup steps: python, dependencies, etc. exact same as Sequential ]
+
+      - name: Run BDD Framework
+        uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
+        with:
+          service: "my-service"
+          feature_file: ${{ matrix.feature_file }}
+          artifact_name_suffix: "-${{ strategy.job-index }}"
+
+  # 3. Report Job: unifies all XMLs
+  publish-report:
+    needs: parallel-bdd
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bdd-test-reports-my-service-*
+          path: reports/junit
+          merge-multiple: true
+
+      - uses: LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
+        with:
+          report_path: "reports/junit/*.xml"
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.

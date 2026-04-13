@@ -18,7 +18,22 @@ def run_bdd_tests(extra_args=None):
         print(f"Error: no se encontró el directorio de features en '{features_path}'")
         sys.exit(1)
 
-    args = [features_path] + (extra_args or [])
+    # Si extra_args ya contiene una ruta a un archivo .feature específico,
+    # evitamos meter la carpeta features_path entera para no duplicar.
+    def _is_feature_target(arg: str) -> bool:
+        return not arg.startswith("-") and (arg.endswith(".feature") or ".feature:" in arg)
+
+    has_specific_feature = extra_args and any(_is_feature_target(arg) for arg in extra_args)
+
+    if has_specific_feature:
+        feature_paths = [arg for arg in extra_args if _is_feature_target(arg)]
+        other_args = [arg for arg in extra_args if arg not in feature_paths]
+        # El separador "--" fuerza a argparse/behave a tratar lo siguiente como target posicional.
+        args = other_args + ["--"] + feature_paths
+    else:
+        args = [features_path] + (extra_args or [])
+
+    print(f"Ejecutando Behave con los siguientes argumentos: {args}")
     exit_code = behave_main.main(args)
     sys.exit(exit_code)
 

@@ -32,18 +32,28 @@ inputs:
       importable by the step files). Leave empty for non-Python services.
     required: false
     default: ""
+  feature_file:
+    description: "Specific .feature file to run (used in parallel executions to split tests by feature)"
+    required: false
+    default: ""
+  artifact_name_suffix:
+    description: "Suffix for the uploaded artifact name to prevent collisions in matrix runs"
+    required: false
+    default: ""
   python_version:
     description: >
       Python version to use for the BDD testing environment (e.g., '3.12').
       If empty, uses the runner's default Python.
     required: false
     default: ""
+
 runs:
   using: composite
   steps:
     - name: Install BDD framework dependencies
       shell: bash
       run: |
+        REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
         if [[ "${{ github.action_path }}" == /mnt/* ]]; then
           BDD_VENV=/tmp/bdd-framework-venv
         else
@@ -58,11 +68,11 @@ runs:
         fi
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
-          -r "${{ github.action_path }}/requirements.txt" \
-          -r "${{ github.action_path }}/tests/requirements.txt"
+          -r "${REPO_ROOT}/requirements.txt" \
+          -r "${REPO_ROOT}/tests/requirements.txt"
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
-          "${{ github.action_path }}"
+          "${REPO_ROOT}"
         if [[ -n "${{ inputs.test_requirements }}" ]]; then
           uv pip install --quiet \
             --python "${BDD_VENV}/bin/python" \
@@ -78,7 +88,12 @@ runs:
     - name: Run BDD Framework
       shell: bash
       run: |
-        "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}"
+        REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
+        if [[ -n "${{ inputs.feature_file }}" ]]; then
+          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
+        else
+          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+        fi
 
     - name: Check for test reports
       id: check_reports
@@ -99,13 +114,7 @@ runs:
       if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
       uses: actions/upload-artifact@v4
       with:
-        name: bdd-test-reports-${{ inputs.service }}
+        name: bdd-test-reports-${{ inputs.service }}${{ inputs.artifact_name_suffix }}
         path: reports/${{ inputs.artifacts_log_dir }}
         retention-days: 30
         if-no-files-found: ignore
-
-    - name: Publish test results
-      if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      with:
-        files: reports/${{ inputs.artifacts_log_dir }}/*.xml
