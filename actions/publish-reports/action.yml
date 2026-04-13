@@ -32,7 +32,7 @@ runs:
     - name: Generate Markdown summary
       shell: bash
       run: |
-        python "${{ github.action_path }}/../scripts/junit_report_summary.py" \
+        python "${{ github.action_path }}/../../scripts/junit_report_summary.py" \
           --report-path "${{ inputs.report_path }}" \
           --output "${{ inputs.summary_output }}"
 
