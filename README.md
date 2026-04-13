@@ -100,10 +100,11 @@ In GitHub Actions, declare the database as a job-level `services:` container —
 
 ### CI/CD Configuration
 
-The framework is distributed as **composite actions** (`/` and `/discovery`) that you can wire in your workflow:
+The framework is distributed as **composite actions** under `actions/` (`actions/main`, `actions/discovery`, and `actions/publish-reports`) that you can wire in your workflow:
 
 1. **Composite Action (Sequential)**: Runs as a `uses:` step inside your job, sharing the same runner. The framework installs its own dependencies in an isolated virtual environment, so they never conflict with your project's packages.
 2. **Discovery + Matrix (Parallel)**: The discovery action scans `.feature` files and outputs a JSON list. Your workflow then uses that list in a matrix strategy to run multiple jobs concurrently.
+3. **Publish Reports**: A separate action for publishing JUnit-style XML results to the GitHub check interface.
 
 #### Option A: Composite Action (Sequential execution)
 
@@ -162,7 +163,7 @@ If your test suite is large, you can speed up CI by discovering all `.feature` f
 > Note: For this repository, each matrix runner still installs Python and Node dependencies locally. Because this stack uses interpreted languages with large dependency graphs, GitHub Actions native caching is usually faster than uploading/downloading full dependency artifacts between separate runners. Still, evaluate your own workflow: if your project can install shared dependencies once before the parallel matrix, that may be worth trying.
 
 ```yaml
-# .github/workflows/ci_parallel.yml in YOUR repository
+# .github/workflows/ci_parallel_example.yml in YOUR repository
 jobs:
   # 1. Discovery Job: calculates the JSON matrix dynamically
   discovery:
@@ -214,7 +215,6 @@ jobs:
         with:
           service: "my-service"
           feature_file: ${{ matrix.feature_file }}
-          publish_results: "false" # Prevent partial result spam on PRs
           artifact_name_suffix: "-${{ strategy.job-index }}"
 
   # 3. Report Job: unifies all XMLs
