@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+BDD Framework - Test Runner
+============================
 
 Runs BDD tests using the configuration defined in framework.yml.
 All services (backend, frontend, etc.) must be started before
@@ -19,6 +22,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+
+from redhat_bdd_framework.cli import main as legacy_main
 
 
 class Colors:
@@ -335,9 +340,7 @@ Usage examples:
     framework = BDDFramework(args.config)
     exit_code = framework.run(extra_args if extra_args else None)
     sys.exit(exit_code)
-"""Compatibility wrapper for legacy `python bdd_framework.py` execution."""
 
-from redhat_bdd_framework.cli import main
 
 if __name__ == "__main__":
-    main()
+    legacy_main()
