@@ -83,7 +83,8 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             "${{ inputs.service_package }}"
         fi
-        "${BDD_VENV}/bin/playwright" install chromium
+        # Descomentar esta linea para ejecutar tests con IA en el frontend - frontend_ia.feature
+        # "${BDD_VENV}/bin/playwright" install chromium
         echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
