@@ -414,6 +414,7 @@ python bdd_framework.py --config framework.yml
 - **Robust health checks:** 60-second timeout with 2-second intervals
 - **Environment variables:** Configured per service in `framework.yml`
 - **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
+- **New report summary artifacts:** added in PR [#67](https://github.com/LukenLarra/RedHat-BDD-Framework/actions/runs/24399282526?pr=67)
 - **Startup delay:** 5 seconds to ensure service stability
 - **Stop on failure:** Tests stop at the first failure
 
