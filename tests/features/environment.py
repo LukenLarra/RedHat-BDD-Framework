@@ -12,6 +12,14 @@ def before_all(context):
     dotenv.load_dotenv()
     context.api_url = os.getenv("API_URL", "http://localhost:8000")
 
+    # Detect whether this is a local run or CI run.
+    # GitHub Actions and many CI systems set CI=true.
+    local_override = os.getenv("LOCAL")
+    if local_override is not None:
+        context.local = local_override.lower() in ("1", "true", "yes")
+    else:
+        context.local = os.getenv("CI", "false").lower() not in ("1", "true", "yes")
+
     # Configurar Groq si hay API key (usando la librería de OpenAI)
     groq_api_key = os.getenv("GROQ_API_KEY")
     if groq_api_key:
