@@ -1,6 +1,6 @@
 Feature: Validaciones E2E del Frontend con IA
 
-  @ui @ai
+  @ui @ai @local
   Scenario: La IA verifica que la página principal carga la lista de películas
     Given the frontend is running
     When I open the frontend homepage
