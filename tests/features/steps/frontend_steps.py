@@ -34,82 +34,7 @@ def get_interactive_dom_markdown(page):
     soup = BeautifulSoup(page.content(), "html.parser")
     interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
 
-    markdown_lines = ["## Elementos Interactivos:\n"]
-    for element in interactive_elements:
-        ai_id = element.get("ai-id")
-        if not ai_id:
-            continue
-
-        el_type = element.name.upper()
-        el_text = element.get_text(strip=True)[:100]
-        el_placeholder = element.get("placeholder", "")
-        el_value = element.get("dynamic-value", "")
-
-        info = f"[{el_type}]"
-        if el_text and el_type not in ["INPUT", "TEXTAREA", "SELECT"]:
-            info = f"[{el_type}: {el_text}]"
-        else:
-            parts = []
-            if el_placeholder:
-                parts.append(f"placeholder='{el_placeholder}'")
-            if el_value:
-                parts.append(f"current_value='{el_value}'")
-            elif el_text and el_type in ["SELECT", "TEXTAREA"]:
-                parts.append(f"current_value='{el_text}'")
-
-            if parts:
-                info = f"[{el_type}: {', '.join(parts)}]"
-
-        markdown_lines.append(f'- {info} (ai-id="{ai_id}")')
-
-    # Add error/success messages tracking to markdown to provide feedback to LLM
-    alert_elements = soup.find_all(
-        class_=lambda c: (
-            c and ("error" in c.lower() or "success" in c.lower() or "alert" in c.lower())
-        )
-    )
-    if alert_elements:
-        markdown_lines.append("\n## System Messages:\n")
-        for alert in alert_elements:
-            markdown_lines.append(alert.get_text(strip=True))
-
-    markdown_lines.append("\n## Page Content (text):\n")
-    visible_text = soup.get_text(separator="\n", strip=True)[:1500]
-    markdown_lines.append(visible_text)
-
-    return "\n".join(markdown_lines)
-
-
-def get_interactive_dom_markdown(page):
-    """Convert the page DOM to pseudo-markdown by injecting ai-id attributes
-    to uniquely identify interactive elements."""
-    html_content = page.content()
-    soup = BeautifulSoup(html_content, "html.parser")
-
-    # Remove noise that does not contribute to interactive UI
-    for tag in soup(["script", "style", "svg", "noscript", "meta", "link", "head"]):
-        tag.decompose()
-
-    # Identify interactive elements and inject ai-id attributes
-    interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
-
-    # Evaluate selectors by injecting ai-id into the Playwright DOM
-    # We do this by injecting the ID directly into the real browser DOM so it will match later.
-    page.evaluate("""() => {
-        let elements = document.querySelectorAll('input, button, a, select, textarea');
-        elements.forEach((el, index) => {
-            el.setAttribute('ai-id', String(index + 1));
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-                el.setAttribute('dynamic-value', el.value || '');
-            }
-        });
-    }""")
-
-    # Re-fetch the HTML after injecting ai-id and values locally
-    soup = BeautifulSoup(page.content(), "html.parser")
-    interactive_elements = soup.find_all(["input", "button", "a", "select", "textarea"])
-
-    markdown_lines = ["## Elementos Interactivos:\n"]
+    markdown_lines = ["## Interactive Elements:\n"]
     for element in interactive_elements:
         ai_id = element.get("ai-id")
         if not ai_id:
@@ -301,4 +226,4 @@ Answer ONLY with valid JSON using this exact format:
     assert result.get("confirmed") is True, (
         f"AI verification failed.\nReason: {result.get('reason')}\nDOM: {clean_html[:200]}"
     )
-    print(f"✓ Confirmado por LLM: {result.get('reason')}")
+    print(f"✓ Confirmed by LLM: {result.get('reason')}")
