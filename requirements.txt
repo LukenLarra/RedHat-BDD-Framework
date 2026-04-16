@@ -1,7 +1,7 @@
 # BDD Framework Core Dependencies
 # ==================================
 # Este archivo contiene solo las dependencias necesarias para ejecutar
-# el framework (bdd_framework.py). Las dependencias de cada servicio
+# el framework (redhat_bdd_framework). Las dependencias de cada servicio
 # están en sus respectivos directorios.
 
 behave==1.2.6

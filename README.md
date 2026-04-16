@@ -36,7 +36,7 @@ npm install
 - **With Python:**
 
 ```bash
-python bdd_framework.py --config framework.yml
+python -m redhat_bdd_framework --config framework.yml
 ```
 
 - **As an installed package (recommended):**
@@ -401,7 +401,7 @@ The framework uses a unified production configuration that works both in local d
 ### Basic Execution
 
 ```bash
-python bdd_framework.py --config framework.yml
+python -m redhat_bdd_framework --config framework.yml
 ```
 
 ### Execution Features
@@ -465,7 +465,7 @@ When you run `act push`:
 - **Backend:** Python (FastAPI + Uvicorn) with PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
-- **Orchestrator:** `bdd_framework.py` to manage services and tests
+- **Orchestrator:** `bdd-framework` cli to manage services and tests
 - **Database:** PostgreSQL 12+ (ephemeral in CI, local in development)
 
 ---
