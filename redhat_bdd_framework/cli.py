@@ -207,7 +207,7 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Usage examples:
-  python bdd_framework.py --config framework.yml
+  python -m redhat_bdd_framework --config framework.yml
   bdd-framework --config framework.yml --tags @smoke
   python -m redhat_bdd_framework --config framework.yml --tags @critical --no-capture
         """,
