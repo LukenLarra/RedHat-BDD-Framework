@@ -90,9 +90,9 @@ runs:
       run: |
         REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
         if [[ -n "${{ inputs.feature_file }}" ]]; then
-          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
+          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
         else
-          "${BDD_VENV_PATH}/bin/python" "${REPO_ROOT}/bdd_framework.py" --config "${{ inputs.bdd_config }}"
+          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}"
         fi
 
     - name: Check for test reports

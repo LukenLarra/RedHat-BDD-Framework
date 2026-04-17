@@ -5,7 +5,7 @@ PYTHON := python
 UV := uv
 
 # Rules
-.PHONY: install-uv install-backend install-tests run-backend run-tests clean act-list act-run act-help
+.PHONY: install-uv install-backend install-tests run-backend run-tests run-unit-tests clean act-list act-run act-help
 
 install-uv: ## Install uv package manager
 	@echo "Installing uv..."
@@ -26,6 +26,10 @@ run-backend: ## Start the backend server (backend/app.py)
 run-tests: ## Execute BDD tests via tests/run_bdd_tests.py
 	@echo "Running BDD tests..."
 	@$(PYTHON) tests/run_bdd_tests.py
+
+run-unit-tests: ## Execute unit tests (e.g. for scripts)
+	@echo "Running unit tests..."
+	@$(PYTHON) -m unittest discover -s tests -p "test_*.py"
 
 clean: ## Remove __pycache__ dirs and .pyc files
 	@echo "Cleaning temporary files..."

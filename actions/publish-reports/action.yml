@@ -3,16 +3,54 @@ description: >
   Helper action to publish unit test results to a pull request or commit.
   Used by the primary workflow after downloading the generated XML files
   from parallel or sequential runs.
+  This action also generates a Markdown summary from the JUnit XML and
+  uploads it as an artifact for easier CI review.
 inputs:
   report_path:
     description: "Pattern or path to the XML test reports (e.g. 'reports/junit/*.xml')"
     required: false
     default: "reports/junit/*.xml"
+  summary_output:
+    description: "Path to write the generated Markdown summary."
+    required: false
+    default: "reports/bdd-test-summary.md"
+  upload_summary_artifact:
+    description: "Whether to upload the generated summary as an artifact."
+    required: false
+    default: "true"
+  summary_artifact_name:
+    description: "Name of the uploaded summary artifact."
+    required: false
+    default: "bdd-test-summary"
+  summary_to_job:
+    description: "Whether to write the generated summary into the GitHub Actions job summary."
+    required: false
+    default: "true"
 runs:
   using: composite
   steps:
+    - name: Generate Markdown summary
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/../../scripts/junit_report_summary.py" \
+          --report-path "${{ inputs.report_path }}" \
+          --output "${{ inputs.summary_output }}"
+
     - name: Publish test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: ${{ always() && inputs.summary_to_job == 'true' }}
+      shell: bash
+      run: |
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${{ inputs.summary_output }}" ]; then
+          cat "${{ inputs.summary_output }}" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "GitHub job summary is not available in this runner." >&2
+        fi
+
+    - name: Upload summary artifact
+      if: ${{ always() && inputs.upload_summary_artifact == 'true' }}
+      uses: actions/upload-artifact@v4
       with:
-        files: ${{ inputs.report_path }}
-        check_name: "BDD Test Results"
+        name: ${{ inputs.summary_artifact_name }}
+        path: ${{ inputs.summary_output }}
+        retention-days: 30
+        if-no-files-found: ignore

@@ -20,7 +20,7 @@ This directory contains custom actions used by GitHub Actions workflows in this 
 - Name: `RedHat BDD Framework`
 - What it does:
   - Installs the BDD framework and project dependencies.
-  - Runs the BDD tests using `bdd_framework.py`.
+  - Runs the BDD tests using `python -m redhat_bdd_framework`.
   - Uploads test report artifacts (`reports/junit/*.xml`) when available.
 - Important inputs:
   - `service`: service name used for artifact naming.
