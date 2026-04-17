@@ -74,6 +74,15 @@ jobs:
       - name: Install backend dependencies
         run: uv pip install --system -r backend/requirements.txt
 
+      # Playwright dependencies are optional and only needed if your tests use Playwright.
+      # ---------------------------------------------------------------------------------
+      - name: Install Playwright system dependencies
+        run: playwright install-deps chromium
+
+      - name: Install Playwright browsers
+        run: playwright install chromium
+      # ---------------------------------------------------------------------------------
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend

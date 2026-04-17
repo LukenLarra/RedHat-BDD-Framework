@@ -1,13 +1,13 @@
 # Backend API Dependencies
 # =========================
 
-fastapi==0.109.0
+fastapi>=0.115.0
 psycopg2-binary>=2.9.0
-pydantic==2.5.3
+pydantic>=2.11.0
 
 # Database - PostgreSQL with SQLAlchemy ORM
 SQLAlchemy>=2.0.0
-uvicorn[standard]==0.27.0
+uvicorn[standard]>=0.31.1
 
 # Instalación:
 # pip install -r requirements.txt
