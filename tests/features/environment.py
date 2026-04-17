@@ -1,4 +1,7 @@
+import asyncio
 import os
+import sys
+import threading
 import time
 
 import dotenv
@@ -7,79 +10,163 @@ from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
 
-def before_all(context):
-    """Se ejecuta una vez antes de todos los tests"""
-    dotenv.load_dotenv()
-    context.api_url = os.getenv("API_URL", "http://localhost:8000")
+class MCPSessionManager:
+    """
+    Gestiona una sesión MCP persistente en un thread async dedicado.
+    Se inicia una vez en before_all y se reutiliza en todos los steps.
+    """
 
-    # Detect whether this is a local run or CI run.
-    # GitHub Actions and many CI systems set CI=true.
+    def __init__(self, headless: bool = True):
+        self.session = None
+        self.tools = []
+        self.headless = headless
+        self._loop = None
+        self._thread = None
+        self._ready = threading.Event()
+        self._stop = threading.Event()
+        self._error = None
+
+    def start(self):
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        if not self._ready.wait(timeout=60):
+            raise RuntimeError(f"MCPSessionManager no arrancó en 60s. Error: {self._error}")
+
+    def _run(self):
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        try:
+            self._loop.run_until_complete(self._session_lifecycle())
+        except Exception as e:
+            self._error = e
+            self._ready.set()  # desbloquear aunque haya fallado
+
+    async def _session_lifecycle(self):
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+
+        args = ["-y", "@playwright/mcp@latest"]
+        if self.headless:
+            args += ["--headless", "--no-sandbox"]  # flag soportado desde v0.0.14
+
+        server_params = StdioServerParameters(
+            command="npx.cmd" if sys.platform == "win32" else "npx",
+            args=args,
+            env={
+                **os.environ,
+            },
+        )
+
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                tools_response = await session.list_tools()
+                self.session = session
+                self.tools = tools_response.tools
+                self._ready.set()
+
+                # Mantener vivo hasta señal de stop
+                await self._loop.run_in_executor(None, self._stop.wait)
+
+    def run_coro(self, coro):
+        """Ejecuta una coroutine en el loop del manager de forma thread-safe."""
+        if self._loop is None or not self._loop.is_running():
+            raise RuntimeError("MCPSessionManager loop no está activo")
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result(timeout=120)
+
+    def stop(self):
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=15)
+
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _is_local(context) -> bool:
     local_override = os.getenv("LOCAL")
     if local_override is not None:
-        context.local = local_override.lower() in ("1", "true", "yes")
-    else:
-        context.local = os.getenv("CI", "false").lower() not in ("1", "true", "yes")
+        return local_override.lower() in ("1", "true", "yes")
+    return os.getenv("CI", "false").lower() not in ("1", "true", "yes")
 
-    # Configurar Groq si hay API key (usando la librería de OpenAI)
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    if groq_api_key:
-        context.openai_client = OpenAI(
-            api_key=groq_api_key, base_url="https://api.groq.com/openai/v1"
-        )
-    else:
-        context.openai_client = None
 
-    # Verificar que la API está disponible
-    max_retries = 30
-    print(f"\nWaiting for API to be available at {context.api_url}...")
+def _wait_for_service(url: str, max_retries: int = 30, label: str = "service"):
+    print(f"\nWaiting for {label} at {url}...")
     for i in range(max_retries):
         try:
-            response = requests.get(f"{context.api_url}/health", timeout=1)
-            if response.status_code == 200:
-                print(f"✓ API available at {context.api_url}")
-                break
-        except requests.exceptions.RequestException as e:
-            if i == max_retries - 1:
-                raise Exception(f"Could not connect to API at {context.api_url}") from e
-            time.sleep(1)
-
-    # Inicializar Playwright
-    context.playwright = sync_playwright().start()
-    context.browser = context.playwright.chromium.launch(headless=True)
-    context.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            r = requests.get(url, timeout=1)
+            if r.status_code < 500:
+                print(f"✓ {label} available")
+                return
+        except requests.exceptions.RequestException:
+            pass
+        if i == max_retries - 1:
+            raise RuntimeError(f"Could not connect to {label} at {url}")
+        time.sleep(1)
 
 
 def reset_test_database(context):
-    """Llama al endpoint de reset de pruebas para devolver la BD al estado inicial."""
     if os.getenv("ENABLE_TEST_API", "false").lower() != "true":
         return
-
     reset_url = f"{context.api_url}/api/test/reset"
-    for _attempt in range(3):
+    for _ in range(3):
         try:
-            response = requests.post(reset_url, timeout=5)
-            if response.status_code == 200:
+            r = requests.post(reset_url, timeout=5)
+            if r.status_code == 200:
                 return
         except requests.exceptions.RequestException:
             time.sleep(1)
-    raise Exception(f"No se pudo resetear la base de datos de pruebas en {reset_url}")
+    raise RuntimeError(f"No se pudo resetear la BD en {reset_url}")
+
+
+# ── Hooks ────────────────────────────────────────────────────────────────────
+
+
+def before_all(context):
+    dotenv.load_dotenv()
+
+    context.api_url = os.getenv("API_URL", "http://localhost:8000")
+    context.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    context.local = _is_local(context)
+
+    # Cliente Groq/OpenAI
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    context.openai_client = (
+        OpenAI(api_key=groq_api_key, base_url="https://api.groq.com/openai/v1")
+        if groq_api_key
+        else None
+    )
+
+    _wait_for_service(f"{context.api_url}/health", label="API")
+
+    # Playwright Python (para tests no-AI)
+    context.playwright = sync_playwright().start()
+    context.browser = context.playwright.chromium.launch(
+        headless=not context.local  # headed local, headless CI
+    )
+
+    # MCP session compartida (para tests @ai)
+    # Solo se inicia si hay API key — en CI sin key los tests @ai se saltarán
+    if context.openai_client:
+        context.mcp_manager = MCPSessionManager(headless=not context.local)
+        context.mcp_manager.start()
+        print("✓ MCP session lista")
+    else:
+        context.mcp_manager = None
 
 
 def before_scenario(context, scenario):
-    """Resets the state before each scenario"""
-    # Allow skipping tests marked with @skip
     if "skip" in scenario.effective_tags:
-        scenario.skip("Skipped because it contains the @skip tag")
+        scenario.skip("@skip tag")
         return
 
-    # Allow skipping tests marked with @local if execution is not local (e.g. CI or Docker)
-    if "local" in scenario.effective_tags and not getattr(context, "local", True):
-        scenario.skip("Skipped because it contains the @local tag but execution is not local")
-    """Resetea el estado antes de cada escenario"""
+    if "local" in scenario.effective_tags and not context.local:
+        scenario.skip("@local tag pero ejecución no es local")
+        return
 
-    # Si el test requiere IA pero no hay API key, se salta
-    if "ai" in scenario.effective_tags and not getattr(context, "openai_client", None):
-        scenario.skip("Saltado: requiere @ai pero no hay GROQ_API_KEY configurada")
+    if "ai" in scenario.effective_tags and not context.openai_client:
+        scenario.skip("@ai requiere GROQ_API_KEY")
         return
 
     reset_test_database(context)
@@ -87,20 +174,24 @@ def before_scenario(context, scenario):
     context.response = None
     context.status_code = None
 
-    # Nuevo contexto de Playwright por cada test de frontend
-    context.browser_context = context.browser.new_context()
-    context.page = context.browser_context.new_page()
+    # Playwright Python solo para scenarios no-AI
+    # Los scenarios @ai usan el browser del MCP
+    if "ai" not in scenario.effective_tags:
+        context.browser_context = context.browser.new_context()
+        context.page = context.browser_context.new_page()
+    else:
+        context.browser_context = None
+        context.page = None
 
 
 def after_scenario(context, scenario):
-    """Se ejecuta después de cada escenario"""
-    if hasattr(context, "page"):
+    if hasattr(context, "page") and context.page:
         context.page.close()
-    if hasattr(context, "browser_context"):
+    if hasattr(context, "browser_context") and context.browser_context:
         context.browser_context.close()
 
     if scenario.status == "failed":
-        print(f"\n✗ Failed scenario: {scenario.name}")
+        print(f"\n✗ Failed: {scenario.name}")
         if hasattr(context, "response"):
             print(f"  Last response: {context.response}")
         if hasattr(context, "status_code"):
@@ -108,7 +199,9 @@ def after_scenario(context, scenario):
 
 
 def after_all(context):
-    """Se ejecuta una vez después de todos los tests"""
+    if hasattr(context, "mcp_manager") and context.mcp_manager:
+        context.mcp_manager.stop()
+
     if hasattr(context, "browser"):
         context.browser.close()
     if hasattr(context, "playwright"):
