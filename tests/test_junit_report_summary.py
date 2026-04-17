@@ -1,3 +1,12 @@
+"""
+Unit tests for the JUnit report summary script.
+
+To run these tests locally, execute the following command from the project root:
+    python -m unittest tests.test_junit_report_summary
+or
+    python tests/test_junit_report_summary.py
+"""
+
 import os
 import sys
 import tempfile
