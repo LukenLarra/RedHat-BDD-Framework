@@ -261,7 +261,8 @@ def main():
     reports = [parse_report_file(path) for path in report_paths]
     summary_path = write_summary(reports, args.output, patterns)
     print(f"Generated summary: {summary_path}")
-    print(open(summary_path, encoding="utf-8").read())
+    with open(summary_path, encoding="utf-8") as handle:
+        print(handle.read())
 
 
 if __name__ == "__main__":

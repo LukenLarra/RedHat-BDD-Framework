@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -6,6 +7,7 @@ import xml.etree.ElementTree as ET
 from scripts.junit_report_summary import (
     format_duration,
     local_name,
+    main,
     parse_report_file,
     parse_testcase,
 )
@@ -94,6 +96,51 @@ class TestJunitReportSummary(unittest.TestCase):
             self.assertEqual(result["tests"], 0)
         finally:
             os.remove(temp_path)
+
+    def test_main_generates_markdown_summary_and_prints_it(self):
+        xml_content = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+        <testsuites>
+            <testsuite name=\"SuiteC\">
+                <testcase name=\"PassedTest\" time=\"1.0\" classname=\"C\" />
+                <testcase name=\"FailedTest\" time=\"0.5\" classname=\"C\">
+                    <failure message=\"Failed\" />
+                </testcase>
+                <testcase name=\"SkippedTest\" time=\"0.0\" classname=\"C\">
+                    <skipped message=\"Skip\" />
+                </testcase>
+            </testsuite>
+        </testsuites>
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report_path = os.path.join(tmpdir, "report.xml")
+            output_path = os.path.join(tmpdir, "summary.md")
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(xml_content)
+
+            previous_argv = sys.argv
+            try:
+                sys.argv = [
+                    "junit_report_summary.py",
+                    "--report-path",
+                    report_path,
+                    "--output",
+                    output_path,
+                ]
+                result = main()
+            finally:
+                sys.argv = previous_argv
+
+            self.assertIsNone(result)
+            self.assertTrue(os.path.exists(output_path))
+
+            with open(output_path, encoding="utf-8") as handle:
+                summary_text = handle.read()
+            print(summary_text)
+
+            self.assertIn("## Totals 📊", summary_text)
+            self.assertIn("SuiteC", summary_text)
+            self.assertIn("FailedTest", summary_text)
+            self.assertIn("SkippedTest", summary_text)
 
 
 if __name__ == "__main__":
