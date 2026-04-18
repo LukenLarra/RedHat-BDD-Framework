@@ -49,7 +49,9 @@ async def run_mcp_agent(
         "Always start with browser_navigate to go to the URL provided.\n"
         "Use browser_snapshot or similar reading tools to inspect the page.\n"
         "Use browser_click, browser_type for interactions.\n"
-        "When using browser_fill_form, always set field type to 'textbox' for any text or number input — "
+        "When using browser_fill_form, each field MUST include a 'ref' key taken from the element's ref in the browser_snapshot output. "
+        "Always call browser_snapshot first, find the ref for each input, then pass it in every field object. "
+        "Also set field type to 'textbox' for any text or number input — "
         "never use 'spinbutton' or other ARIA roles not in: textbox, checkbox, radio, combobox, slider.\n"
     )
 
