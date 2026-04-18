@@ -198,7 +198,7 @@ def step_impl_frontend_running(context):
 
 @when("I open the frontend homepage")
 def step_impl_open_frontend_homepage(context):
-    """Navigate with the Playwright Python page (non-AI scenarios only)."""
+    """Navigate with the Playwright Python page."""
     if context.page is None:
         print(f"@ai scenario — MCP agent will navigate to {context.frontend_url}")
         return
