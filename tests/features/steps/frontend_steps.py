@@ -1,5 +1,6 @@
 import json
 import re
+import time
 
 import requests
 from behave import given, then, when
@@ -78,24 +79,46 @@ async def run_mcp_agent(
     for step_num in range(max_steps):
         print(f"🔄 MCP Agent Step {step_num + 1}/{max_steps}...")
 
-        try:
-            response = openai_client.chat.completions.create(
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
-                messages=messages,
-                tools=openai_tools,
-                # On the last step, force a text reply so the loop always terminates
-                tool_choice="auto" if step_num < max_steps - 1 else "none",
-                temperature=0.0,
-            )
-        except Exception as e:
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                import groq
+                response = openai_client.chat.completions.create(
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    messages=messages,
+                    tools=openai_tools,
+                    # On the last step, force a text reply so the loop always terminates
+                    tool_choice="auto" if step_num < max_steps - 1 else "none",
+                    temperature=0.0,
+                )
+                break
+            except Exception as e:
+                is_rate_limit = False
+                wait_secs = 10.0
+                try:
+                    import groq
 
-                if isinstance(e, groq.RateLimitError):
-                    print("⚠️  Rate limit reached — aborting.")
-            except ImportError:
-                pass
-            raise
+                    if isinstance(e, groq.RateLimitError):
+                        is_rate_limit = True
+                except ImportError:
+                    pass
+                if not is_rate_limit:
+                    try:
+                        import openai as _openai
+
+                        if isinstance(e, _openai.RateLimitError):
+                            is_rate_limit = True
+                    except ImportError:
+                        pass
+                if is_rate_limit and attempt < max_retries - 1:
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", str(e))
+                    if match:
+                        wait_secs = float(match.group(1)) + 1.0
+                    print(
+                        f"⚠️  Rate limit reached — retrying in {wait_secs:.1f}s (attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(wait_secs)
+                else:
+                    raise
 
         msg = response.choices[0].message
 
