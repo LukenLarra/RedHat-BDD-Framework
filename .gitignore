@@ -47,3 +47,9 @@ uv.lock
 # act (GitHub Actions runner)
 .secrets
 .env.act
+
+
+# claude
+.claude/
+.agents/
+skills-lock.json
