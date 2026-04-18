@@ -104,7 +104,9 @@ jobs:
       # Playwright dependencies are optional and only needed if your tests use Playwright.
       # ---------------------------------------------------------------------------------
       - name: Install Playwright system dependencies
-        run: playwright install-deps chromium
+        run: |
+          uv pip install --system playwright
+          playwright install-deps chromium
       # ---------------------------------------------------------------------------------
 
       - name: Install frontend dependencies
