@@ -45,14 +45,18 @@ async def run_mcp_agent(
     base_prompt = (
         "You are an automated web testing agent. "
         "Use the available tools to accomplish the task.\n"
-        "Always start with `browser_navigate` to go to the URL provided.\n"
-        "Use `browser_snapshot` or similar reading tools to inspect the page.\n"
-        "Use `browser_click`, `browser_type` for interactions.\n"
+        "Always start with browser_navigate to go to the URL provided.\n"
+        "Use browser_snapshot or similar reading tools to inspect the page.\n"
+        "Use browser_click, browser_type for interactions.\n"
+        "When using browser_fill_form, always set field type to 'textbox' for any text or number input — "
+        "never use 'spinbutton' or other ARIA roles not in: textbox, checkbox, radio, combobox, slider.\n"
     )
 
     if is_condition:
         system_prompt = base_prompt + (
             "Your task is to VERIFY A CONDITION.\n"
+            "Use only browser_navigate and browser_snapshot to inspect the page. "
+            "Do NOT use browser_evaluate, browser_console_messages, or any other tools.\n"
             "Once you have enough information, output ONLY a raw JSON object — "
             "no markdown, no preamble, no explanation:\n"
             '{"confirmed": true/false, "reason": "<one-line explanation>"}'
@@ -76,7 +80,7 @@ async def run_mcp_agent(
 
         try:
             response = openai_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
                 messages=messages,
                 tools=openai_tools,
                 # On the last step, force a text reply so the loop always terminates
@@ -170,6 +174,9 @@ def step_impl_frontend_running(context):
 @when("I open the frontend homepage")
 def step_impl_open_frontend_homepage(context):
     """Navigate with the Playwright Python page (non-AI scenarios only)."""
+    if context.page is None:
+        print(f"@ai scenario — MCP agent will navigate to {context.frontend_url}")
+        return
     print(f"Navigating to frontend: {context.frontend_url}")
     context.page.goto(context.frontend_url)
     context.page.wait_for_load_state("networkidle")

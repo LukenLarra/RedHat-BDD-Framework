@@ -5,7 +5,7 @@ Feature: Validaciones E2E del Frontend con IA
     Given the frontend is running
     When I open the frontend homepage
     # Para el texto principal y estructura básica
-    Then the AI visually confirms that "the main title should be 'Movie Catalog' and there is an 'Add Movie' form"
+    Then the AI visually confirms that "the main title should be 'Catálogo de Películas' and there is an 'Add Movie' form"
 
   @ui @ai
   Scenario: Rellenar el formulario para interactuar con la web

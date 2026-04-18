@@ -40,40 +40,38 @@ class Movie(Base):
 def init_db(reset: bool = False):
     """Initialize the database and create tables if they do not exist.
 
-    If reset is True, clear the movies table and reinstall sample data.
+    Always truncates the movies table and reloads 8 sample movies.
+    The reset parameter is kept for backward compatibility.
     """
     # Create all tables defined in Base
     Base.metadata.create_all(engine)
 
     session = SessionLocal()
     try:
-        if reset:
-            if engine.dialect.name == "postgresql":
-                session.execute(text("TRUNCATE TABLE movies RESTART IDENTITY CASCADE"))
-            else:
-                session.query(Movie).delete()
-            session.commit()
-
-        movie_count = session.query(Movie).count()
-        if movie_count == 0:
-            sample_movies = [
-                Movie(title="The Godfather", year=1972, director="Francis Ford Coppola"),
-                Movie(title="Pulp Fiction", year=1994, director="Quentin Tarantino"),
-                Movie(title="The Dark Knight", year=2008, director="Christopher Nolan"),
-                Movie(title="Forrest Gump", year=1994, director="Robert Zemeckis"),
-                Movie(title="Inception", year=2010, director="Christopher Nolan"),
-                Movie(title="The Matrix", year=1999, director="Lana and Lilly Wachowski"),
-                Movie(title="Interstellar", year=2014, director="Christopher Nolan"),
-                Movie(title="Gladiator", year=2000, director="Ridley Scott"),
-            ]
-            session.add_all(sample_movies)
-            session.commit()
-            print(f"✓ Database initialized with {len(sample_movies)} sample movies")
+        # Always truncate the movies table
+        if engine.dialect.name == "postgresql":
+            session.execute(text("TRUNCATE TABLE movies RESTART IDENTITY CASCADE"))
         else:
-            print(f"✓ Database already contains {movie_count} movies")
+            session.query(Movie).delete()
+        session.commit()
+
+        # Always load sample movies
+        sample_movies = [
+            Movie(title="The Godfather", year=1972, director="Francis Ford Coppola"),
+            Movie(title="Pulp Fiction", year=1994, director="Quentin Tarantino"),
+            Movie(title="The Dark Knight", year=2008, director="Christopher Nolan"),
+            Movie(title="Forrest Gump", year=1994, director="Robert Zemeckis"),
+            Movie(title="Inception", year=2010, director="Christopher Nolan"),
+            Movie(title="The Matrix", year=1999, director="Lana and Lilly Wachowski"),
+            Movie(title="Interstellar", year=2014, director="Christopher Nolan"),
+            Movie(title="Gladiator", year=2000, director="Ridley Scott"),
+        ]
+        session.add_all(sample_movies)
+        session.commit()
+        print(f"[OK] Database reset with {len(sample_movies)} sample movies")
     except Exception as e:
         session.rollback()
-        print(f"✗ Error initializing database: {e}")
+        print(f"[ERROR] Error initializing database: {e}")
         raise
     finally:
         session.close()
