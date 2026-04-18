@@ -78,9 +78,6 @@ jobs:
       # ---------------------------------------------------------------------------------
       - name: Install Playwright system dependencies
         run: playwright install-deps chromium
-
-      - name: Install Playwright browsers
-        run: playwright install chromium
       # ---------------------------------------------------------------------------------
 
       - name: Install frontend dependencies
