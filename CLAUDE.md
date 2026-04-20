@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Prerequisites
+
+- **Python 3.11+**
+- **Node.js + npm** — required for `@ai` scenarios: `MCPSessionManager` spawns `npx @playwright/mcp@latest` to drive the browser via MCP
+- **PostgreSQL** — for the backend and DB reset between scenarios
+
 ## Commands
 
 ### Installation
