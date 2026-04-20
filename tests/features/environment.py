@@ -12,8 +12,8 @@ from playwright.sync_api import sync_playwright
 
 class MCPSessionManager:
     """
-    Gestiona una sesión MCP persistente en un thread async dedicado.
-    Se inicia una vez en before_all y se reutiliza en todos los steps.
+    Manages a persistent MCP session in a dedicated async thread.
+    Started once in before_all and reused across all steps.
     """
 
     def __init__(self, headless: bool = True):
@@ -30,7 +30,7 @@ class MCPSessionManager:
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
         if not self._ready.wait(timeout=60):
-            raise RuntimeError(f"MCPSessionManager no arrancó en 60s. Error: {self._error}")
+            raise RuntimeError(f"MCPSessionManager did not start within 60s. Error: {self._error}")
 
     def _run(self):
         self._loop = asyncio.new_event_loop()
@@ -39,7 +39,7 @@ class MCPSessionManager:
             self._loop.run_until_complete(self._session_lifecycle())
         except Exception as e:
             self._error = e
-            self._ready.set()  # desbloquear aunque haya fallado
+            self._ready.set()  # unblock even on failure
 
     async def _session_lifecycle(self):
         from mcp import ClientSession, StdioServerParameters
@@ -65,13 +65,13 @@ class MCPSessionManager:
                 self.tools = tools_response.tools
                 self._ready.set()
 
-                # Mantener vivo hasta señal de stop
+                # Keep alive until stop signal
                 await self._loop.run_in_executor(None, self._stop.wait)
 
     def run_coro(self, coro):
-        """Ejecuta una coroutine en el loop del manager de forma thread-safe."""
+        """Runs a coroutine in the manager's loop in a thread-safe manner."""
         if self._loop is None or not self._loop.is_running():
-            raise RuntimeError("MCPSessionManager loop no está activo")
+            raise RuntimeError("MCPSessionManager loop is not active")
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result(timeout=120)
 
@@ -117,7 +117,7 @@ def reset_test_database(context):
                 return
         except requests.exceptions.RequestException:
             time.sleep(1)
-    raise RuntimeError(f"No se pudo resetear la BD en {reset_url}")
+    raise RuntimeError(f"Could not reset the database at {reset_url}")
 
 
 # ── Hooks ────────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ def before_all(context):
     context.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     context.local = _is_local(context)
 
-    # Cliente Groq/OpenAI
+    # Groq/OpenAI client
     groq_api_key = os.getenv("GROQ_API_KEY")
     context.openai_client = (
         OpenAI(api_key=groq_api_key, base_url="https://api.groq.com/openai/v1")
@@ -140,18 +140,18 @@ def before_all(context):
 
     _wait_for_service(f"{context.api_url}/health", label="API")
 
-    # Playwright Python (para tests no-AI)
+    # Playwright Python (for non-AI tests)
     context.playwright = sync_playwright().start()
     context.browser = context.playwright.chromium.launch(
-        headless=not context.local  # headed local, headless CI
+        headless=not context.local  # headed locally, headless in CI
     )
 
-    # MCP session compartida (para tests @ai)
-    # Solo se inicia si hay API key — en CI sin key los tests @ai se saltarán
+    # Shared MCP session (for @ai tests)
+    # Only started if API key present — @ai tests will be skipped in CI without key
     if context.openai_client:
         context.mcp_manager = MCPSessionManager(headless=not context.local)
         context.mcp_manager.start()
-        print("✓ MCP session lista")
+        print("✓ MCP session ready")
     else:
         context.mcp_manager = None
 
@@ -162,11 +162,11 @@ def before_scenario(context, scenario):
         return
 
     if "local" in scenario.effective_tags and not context.local:
-        scenario.skip("@local tag pero ejecución no es local")
+        scenario.skip("@local tag but execution is not local")
         return
 
     if "ai" in scenario.effective_tags and not context.openai_client:
-        scenario.skip("@ai requiere GROQ_API_KEY")
+        scenario.skip("@ai requires GROQ_API_KEY")
         return
 
     reset_test_database(context)
