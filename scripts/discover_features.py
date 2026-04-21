@@ -12,6 +12,8 @@ import shlex
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import yaml
 
 from redhat_bdd_framework.behave_utils import (
