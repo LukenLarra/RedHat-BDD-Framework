@@ -38,6 +38,27 @@ _FLAGS_WITH_VALUES = {
 }
 
 
+def _resolve_command_path(path: Path, tests_path: Path) -> Path:
+    """Resolve a command-relative path against tests_path and its parent.
+
+    Behave resolves @file lists and inline paths relative to the current working
+    directory. In this framework, the logical cwd may be the tests directory or the
+    repository root, so we try both.
+    """
+    if path.is_absolute():
+        return path
+
+    candidate = (tests_path / path).resolve(strict=False)
+    if candidate.exists():
+        return candidate
+
+    candidate = (tests_path.parent / path).resolve(strict=False)
+    if candidate.exists():
+        return candidate
+
+    return tests_path / path
+
+
 def _read_txt_feature_list(txt_path: Path, tests_path: Path) -> list:
     """Read feature paths from a behave @file.txt."""
     features = []
@@ -45,7 +66,8 @@ def _read_txt_feature_list(txt_path: Path, tests_path: Path) -> list:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#"):
-                features.append(str((tests_path / line).as_posix()))
+                feature_path = _resolve_command_path(Path(line), tests_path)
+                features.append(str(feature_path.as_posix()))
     return features
 
 
@@ -92,7 +114,7 @@ def _features_from_command(command: str, tests_path: Path) -> list:
     if txt_files:
         features = []
         for txt in txt_files:
-            txt_path = tests_path / txt
+            txt_path = _resolve_command_path(Path(txt), tests_path)
             if not txt_path.exists():
                 print(f"Warning: @{txt} not found at {txt_path}", file=sys.stderr)
                 continue
@@ -100,7 +122,11 @@ def _features_from_command(command: str, tests_path: Path) -> list:
         return features
 
     if feature_files:
-        return [str((tests_path / f).as_posix()) for f in feature_files]
+        resolved = []
+        for f in feature_files:
+            feature_path = _resolve_command_path(Path(f), tests_path)
+            resolved.append(str(feature_path.as_posix()))
+        return resolved
 
     return []
 

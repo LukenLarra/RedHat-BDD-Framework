@@ -184,6 +184,44 @@ class TestDiscoverFeatures(unittest.TestCase):
             self.assertEqual(result_names, ["caching.feature", "smoke.feature"])
             self.assertNotIn("multicluster.feature", result_names)
 
+    def test_command_with_txt_file_root_relative(self):
+        """When command uses @file.txt relative to the config root, discovery resolves it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+
+            features_dir = tmp / "tests" / "features"
+            features_dir.mkdir(parents=True)
+            (features_dir / "smoke.feature").touch()
+            (features_dir / "caching.feature").touch()
+
+            test_list_dir = tmp / "test_list"
+            test_list_dir.mkdir()
+            txt_file = test_list_dir / "upgrades_data_eng_service.txt"
+            txt_file.write_text(
+                "tests/features/smoke.feature\n",
+                encoding="utf-8",
+            )
+
+            config = {
+                "tests": {
+                    "path": "tests",
+                    "command": "python -m behave @test_list/upgrades_data_eng_service.txt --junit --format pretty",
+                    "bdd": {"features": str(features_dir)},
+                }
+            }
+
+            import yaml
+
+            config_file = tmp / "framework.yml"
+            config_file.write_text(yaml.dump(config), encoding="utf-8")
+
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+                discover(str(config_file))
+
+            result = json.loads(mock_stdout.getvalue().strip())
+            result_names = sorted(Path(p).name for p in result)
+            self.assertEqual(result_names, ["smoke.feature"])
+
     def test_command_with_inline_features(self):
         """When command contains inline .feature paths, discovery uses exactly those."""
         with tempfile.TemporaryDirectory() as tmpdir:
