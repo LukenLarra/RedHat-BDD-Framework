@@ -9,6 +9,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -141,6 +142,113 @@ class TestDiscoverFeatures(unittest.TestCase):
 
         output = mock_stdout.getvalue().strip()
         self.assertEqual(json.loads(output), [mock_file1.as_posix()])
+
+    def test_command_with_txt_file(self):
+        """When command contains @file.txt, discovery reads features from that file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+
+            # Create feature files
+            features_dir = tmp / "features"
+            features_dir.mkdir()
+            (features_dir / "smoke.feature").touch()
+            (features_dir / "caching.feature").touch()
+            (features_dir / "multicluster.feature").touch()
+
+            # Create txt file listing only two features
+            test_list_dir = tmp / "test_list"
+            test_list_dir.mkdir()
+            txt_file = test_list_dir / "my_service.txt"
+            txt_file.write_text(
+                "features/smoke.feature\nfeatures/caching.feature\n", encoding="utf-8"
+            )
+
+            config = {
+                "tests": {
+                    "path": ".",
+                    "command": "python -m behave @test_list/my_service.txt --junit --format pretty",
+                    "bdd": {"features": str(features_dir)},
+                }
+            }
+
+            import yaml
+
+            config_file = tmp / "framework.yml"
+            config_file.write_text(yaml.dump(config), encoding="utf-8")
+
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+                discover(str(config_file))
+
+            result = json.loads(mock_stdout.getvalue().strip())
+            result_names = sorted(Path(p).name for p in result)
+            self.assertEqual(result_names, ["caching.feature", "smoke.feature"])
+            self.assertNotIn("multicluster.feature", result_names)
+
+    def test_command_with_inline_features(self):
+        """When command contains inline .feature paths, discovery uses exactly those."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+
+            features_dir = tmp / "features"
+            features_dir.mkdir()
+            (features_dir / "smoke.feature").touch()
+            (features_dir / "caching.feature").touch()
+            (features_dir / "multicluster.feature").touch()
+
+            config = {
+                "tests": {
+                    "path": ".",
+                    "command": (
+                        "python -m behave features/smoke.feature features/caching.feature"
+                        " --junit --format pretty"
+                    ),
+                    "bdd": {"features": str(features_dir)},
+                }
+            }
+
+            import yaml
+
+            config_file = tmp / "framework.yml"
+            config_file.write_text(yaml.dump(config), encoding="utf-8")
+
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+                discover(str(config_file))
+
+            result = json.loads(mock_stdout.getvalue().strip())
+            result_names = sorted(Path(p).name for p in result)
+            self.assertEqual(result_names, ["caching.feature", "smoke.feature"])
+            self.assertNotIn("multicluster.feature", result_names)
+
+    def test_command_with_tags_does_not_confuse_at_symbol(self):
+        """--tags @smoke should not be mistaken for a @file.txt reference."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+
+            features_dir = tmp / "features"
+            features_dir.mkdir()
+            (features_dir / "smoke.feature").touch()
+            (features_dir / "other.feature").touch()
+
+            config = {
+                "tests": {
+                    "path": ".",
+                    "command": "python -m behave --tags @smoke --junit --format pretty",
+                    "bdd": {"features": str(features_dir)},
+                }
+            }
+
+            import yaml
+
+            config_file = tmp / "framework.yml"
+            config_file.write_text(yaml.dump(config), encoding="utf-8")
+
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+                discover(str(config_file))
+
+            result = json.loads(mock_stdout.getvalue().strip())
+            result_names = sorted(Path(p).name for p in result)
+            # Should fall back to directory scan since no explicit feature targets
+            self.assertEqual(result_names, ["other.feature", "smoke.feature"])
 
 
 if __name__ == "__main__":

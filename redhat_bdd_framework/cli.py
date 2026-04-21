@@ -136,9 +136,9 @@ class BDDFramework:
 
         cmd_parts = shlex.split(command)
 
-        # Evita mezclar @test_list con feature individual
+        # Evita mezclar @test_list o feature files inline con feature individual
         if extra_args and any(".feature" in arg for arg in extra_args):
-            cmd_parts = [p for p in cmd_parts if not p.startswith("@")]
+            cmd_parts = [p for p in cmd_parts if not p.startswith("@") and ".feature" not in p]
 
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
