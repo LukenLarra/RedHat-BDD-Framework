@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -133,7 +134,11 @@ class BDDFramework:
         ):
             self._ensure_reports_directory(command, extra_args)
 
-        cmd_parts = command.split()
+        cmd_parts = shlex.split(command)
+
+        # Evita mezclar @test_list con feature individual
+        if extra_args and any(".feature" in arg for arg in extra_args):
+            cmd_parts = [p for p in cmd_parts if not p.startswith("@")]
 
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
@@ -165,6 +170,8 @@ class BDDFramework:
         env = {**os.environ, **custom_env_str}
 
         try:
+            self._log("DEBUG", f"Final command: {' '.join(cmd_parts)}")
+            self._log("DEBUG", f"CWD: {tests_path}")
             result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
 
             if result.returncode == 0:
