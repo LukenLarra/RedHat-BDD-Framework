@@ -14,28 +14,12 @@ from pathlib import Path
 
 import yaml
 
-# Behave flags that consume the next token as a value (not a feature path).
-_FLAGS_WITH_VALUES = {
-    "--tags",
-    "-t",
-    "--format",
-    "-f",
-    "--outfile",
-    "-o",
-    "--junit-directory",
-    "--include",
-    "-i",
-    "--exclude",
-    "-e",
-    "--stage",
-    "--lang",
-    "--logging-level",
-    "--logging-format",
-    "--logging-filter",
-    "--logging-filename",
-    "--logging-filemode",
-    "--logging-datefmt",
-}
+from redhat_bdd_framework.behave_utils import (
+    BEHAVE_FLAGS_WITH_VALUES,
+    is_feature_target,
+    iterate_tokens,
+    resolve_path,
+)
 
 
 def _resolve_command_path(path: Path, tests_path: Path) -> Path:
@@ -45,18 +29,8 @@ def _resolve_command_path(path: Path, tests_path: Path) -> Path:
     directory. In this framework, the logical cwd may be the tests directory or the
     repository root, so we try both.
     """
-    if path.is_absolute():
-        return path
-
-    candidate = (tests_path / path).resolve(strict=False)
-    if candidate.exists():
-        return candidate
-
-    candidate = (tests_path.parent / path).resolve(strict=False)
-    if candidate.exists():
-        return candidate
-
-    return tests_path / path
+    resolved = resolve_path(path, [tests_path, tests_path.parent])
+    return resolved if resolved is not None else tests_path / path
 
 
 def _read_txt_feature_list(txt_path: Path, tests_path: Path) -> list:
@@ -95,21 +69,14 @@ def _features_from_command(command: str, tests_path: Path) -> list:
 
     txt_files = []
     feature_files = []
-    skip_next = False
 
-    for part in parts[behave_idx + 1 :]:
-        if skip_next:
-            skip_next = False
+    for token, is_flag_value in iterate_tokens(parts[behave_idx + 1 :], BEHAVE_FLAGS_WITH_VALUES):
+        if is_flag_value or token.startswith("-"):
             continue
-        if part in _FLAGS_WITH_VALUES:
-            skip_next = True
-            continue
-        if part.startswith("-"):
-            continue
-        if part.startswith("@"):
-            txt_files.append(part[1:])
-        elif ".feature" in part:
-            feature_files.append(part)
+        if token.startswith("@"):
+            txt_files.append(token[1:])
+        elif is_feature_target(token):
+            feature_files.append(token)
 
     if txt_files:
         features = []
@@ -122,11 +89,7 @@ def _features_from_command(command: str, tests_path: Path) -> list:
         return features
 
     if feature_files:
-        resolved = []
-        for f in feature_files:
-            feature_path = _resolve_command_path(Path(f), tests_path)
-            resolved.append(str(feature_path.as_posix()))
-        return resolved
+        return [str(_resolve_command_path(Path(f), tests_path).as_posix()) for f in feature_files]
 
     return []
 
@@ -181,7 +144,7 @@ def discover(config_path="framework.yml"):
         print("Error: Could not find tests.bdd.features in config", file=sys.stderr)
         sys.exit(1)
 
-    features_path = Path(features_dir)
+    features_path = (config_file.parent / features_dir).resolve()
     if not features_path.exists() or not features_path.is_dir():
         print(
             f"Error: Features directory '{features_dir}' not found or is not a directory.",

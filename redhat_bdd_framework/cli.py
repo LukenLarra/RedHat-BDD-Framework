@@ -12,12 +12,18 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
+from redhat_bdd_framework.behave_utils import (
+    BEHAVE_FLAGS_WITH_VALUES,
+    is_feature_target,
+    iterate_tokens,
+    resolve_path,
+)
+
 
 class Colors:
     """ANSI color codes for terminal output."""
 
     HEADER = "\033[95m"
-    BLUE = "\033[94m"
     CYAN = "\033[96m"
     GREEN = "\033[92m"
     WARNING = "\033[93m"
@@ -94,73 +100,19 @@ class BDDFramework:
             else:
                 self._log("INFO", f"Environment found at: {environment_path}")
 
-    _BEHAVE_FLAGS_WITH_VALUES = {
-        "--tags",
-        "-t",
-        "--format",
-        "-f",
-        "--outfile",
-        "-o",
-        "--junit-directory",
-        "--include",
-        "-i",
-        "--exclude",
-        "-e",
-        "--stage",
-        "--lang",
-        "--logging-level",
-        "--logging-format",
-        "--logging-filter",
-        "--logging-filename",
-        "--logging-filemode",
-        "--logging-datefmt",
-        "--runner",
-        "-r",
-        "--name",
-        "-n",
-        "-j",
-        "--jobs",
-        "--parallel",
-    }
-
-    def _resolve_existing_path(self, raw_path: str, candidates: List[Path]) -> Optional[Path]:
-        """Resolve a path against multiple candidate bases and return the first existing match."""
-        path = Path(raw_path)
-        if path.is_absolute():
-            return path if path.exists() else None
-
-        for base in candidates:
-            candidate = (base / path).resolve(strict=False)
-            if candidate.exists():
-                return candidate
-
-        return None
-
     def _normalize_at_file_targets(
         self, parts: List[str], tests_path: Path, behave_cwd: Path
     ) -> List[str]:
         """Convert behave @file targets to absolute paths so cwd changes do not break them."""
         normalized: List[str] = []
-        skip_next = False
         base_candidates = [self.root_path, tests_path, behave_cwd]
 
-        for token in parts:
-            if skip_next:
+        for token, is_flag_value in iterate_tokens(parts, BEHAVE_FLAGS_WITH_VALUES):
+            if is_flag_value or not token.startswith("@") or len(token) <= 1:
                 normalized.append(token)
-                skip_next = False
                 continue
-            if token in self._BEHAVE_FLAGS_WITH_VALUES:
-                normalized.append(token)
-                skip_next = True
-                continue
-
-            if token.startswith("@") and len(token) > 1:
-                resolved = self._resolve_existing_path(token[1:], base_candidates)
-                if resolved:
-                    normalized.append(f"@{resolved}")
-                    continue
-
-            normalized.append(token)
+            resolved = resolve_path(Path(token[1:]), base_candidates)
+            normalized.append(f"@{resolved}" if resolved else token)
 
         return normalized
 
@@ -202,123 +154,67 @@ class BDDFramework:
         """
         expanded: List[str] = []
         extracted_features: List[str] = []
-        skip_next = False
         base_candidates = [self.root_path, tests_path, behave_root]
 
-        for token in parts:
-            if skip_next:
+        for token, is_flag_value in iterate_tokens(parts, BEHAVE_FLAGS_WITH_VALUES):
+            if is_flag_value or not token.startswith("@") or len(token) <= 1:
                 expanded.append(token)
-                skip_next = False
                 continue
-            if token in self._BEHAVE_FLAGS_WITH_VALUES:
-                expanded.append(token)
-                skip_next = True
-                continue
-
-            if token.startswith("@") and len(token) > 1:
-                resolved = self._resolve_existing_path(token[1:], base_candidates)
-                if resolved and resolved.exists() and resolved.suffix == ".txt":
-                    try:
-                        with open(resolved, encoding="utf-8") as f:
-                            for line in f:
-                                entry = line.strip()
-                                if entry and not entry.startswith("#"):
-                                    extracted_features.append(entry)
-                        continue
-                    except OSError:
-                        # Keep original token if we cannot read the file.
-                        pass
-
+            resolved = resolve_path(Path(token[1:]), base_candidates)
+            if resolved and resolved.exists() and resolved.suffix == ".txt":
+                try:
+                    with open(resolved, encoding="utf-8") as f:
+                        for line in f:
+                            entry = line.strip()
+                            if entry and not entry.startswith("#"):
+                                extracted_features.append(entry)
+                    continue
+                except OSError:
+                    pass
             expanded.append(token)
 
         return expanded, extracted_features
 
     def _ensure_behave_search_root(self, parts: List[str], behave_root: Path) -> List[str]:
         """Ensure behave receives an explicit search root directory."""
-        behave_index = None
-        for i, token in enumerate(parts):
-            if token == "behave":
-                behave_index = i
-                break
-
+        behave_index = next((i for i, t in enumerate(parts) if t == "behave"), None)
         inspect_parts = parts[behave_index + 1 :] if behave_index is not None else parts
 
-        has_path_target = False
-        skip_next = False
+        has_path_target = any(
+            not is_flag_value
+            and not token.startswith("-")
+            and not token.startswith("@")
+            and not is_feature_target(token)
+            for token, is_flag_value in iterate_tokens(inspect_parts, BEHAVE_FLAGS_WITH_VALUES)
+        )
 
-        for token in inspect_parts:
-            if skip_next:
-                skip_next = False
-                continue
-            if token in self._BEHAVE_FLAGS_WITH_VALUES:
-                skip_next = True
-                continue
-            if token.startswith("-"):
-                continue
-            if token.startswith("@"):
-                continue
-            if ".feature" in token:
-                continue
-            has_path_target = True
-            break
-
-        if has_path_target:
-            return parts
-
-        return parts + [str(behave_root)]
+        return parts if has_path_target else parts + [str(behave_root)]
 
     def _collect_explicit_feature_targets(
-        self, cmd_parts: List[str], extra_args: Optional[List[str]], tests_path: Path
+        self, cmd_parts: List[str], extra_args: Optional[List[str]]
     ) -> List[str]:
         """Return explicit .feature targets from the behave command and extra args."""
         parts = cmd_parts[:] + (extra_args or [])
-        behave_index = None
-        for i, token in enumerate(parts):
-            if token == "behave":
-                behave_index = i
-                break
-
+        behave_index = next((i for i, t in enumerate(parts) if t == "behave"), None)
         if behave_index is not None:
             parts = parts[behave_index + 1 :]
 
-        explicit_features = []
-        skip_next = False
-        for token in parts:
-            if skip_next:
-                skip_next = False
-                continue
-            if token in self._BEHAVE_FLAGS_WITH_VALUES:
-                skip_next = True
-                continue
-            if token.startswith("-"):
-                continue
-            if token.startswith("@"):
-                continue
-            if ".feature" in token:
-                explicit_features.append(token)
-
-        return explicit_features
+        return [
+            token
+            for token, is_flag_value in iterate_tokens(parts, BEHAVE_FLAGS_WITH_VALUES)
+            if not is_flag_value
+            and not token.startswith("-")
+            and not token.startswith("@")
+            and is_feature_target(token)
+        ]
 
     def _clean_feature_targets(self, parts: List[str]) -> List[str]:
         """Remove explicit feature path tokens from a parsed command segment."""
-        cleaned = []
-        skip_next = False
-        for token in parts:
-            if skip_next:
-                cleaned.append(token)
-                skip_next = False
-                continue
-            if token in self._BEHAVE_FLAGS_WITH_VALUES:
-                cleaned.append(token)
-                skip_next = True
-                continue
-            if token.startswith("-") or token.startswith("@"):
-                cleaned.append(token)
-                continue
-            if ".feature" in token:
-                continue
-            cleaned.append(token)
-        return cleaned
+        return [
+            token
+            for token, is_flag_value in iterate_tokens(parts, BEHAVE_FLAGS_WITH_VALUES)
+            if is_flag_value or not is_feature_target(token)
+        ]
 
     def _build_include_args(
         self, feature_targets: List[str], tests_path: Path, cwd: Path
@@ -344,6 +240,83 @@ class BDDFramework:
 
         return include_args
 
+    def _prepare_behave_command(
+        self,
+        command: str,
+        tests_path: Path,
+        behave_cwd: Path,
+        extra_args: Optional[List[str]],
+    ) -> Tuple[List[str], Optional[List[str]]]:
+        """Parse command, fix interpreter, normalize and expand @file targets."""
+        cmd_parts = shlex.split(command)
+
+        if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
+            cmd_parts[0] = sys.executable
+        elif cmd_parts[0].lower() == "behave":
+            cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
+
+        cmd_parts = self._normalize_at_file_targets(cmd_parts, tests_path, behave_cwd)
+        if extra_args:
+            extra_args = self._normalize_at_file_targets(extra_args, tests_path, behave_cwd)
+
+        cmd_parts, at_file_features = self._expand_at_file_targets(
+            cmd_parts, tests_path, behave_cwd
+        )
+        if extra_args:
+            extra_args, extra_at_file_features = self._expand_at_file_targets(
+                extra_args, tests_path, behave_cwd
+            )
+            at_file_features.extend(extra_at_file_features)
+
+        if at_file_features:
+            extra_args = list(extra_args or []) + at_file_features
+
+        return cmd_parts, extra_args
+
+    def _apply_feature_filters(
+        self,
+        cmd_parts: List[str],
+        extra_args: Optional[List[str]],
+        tests_path: Path,
+        behave_cwd: Path,
+    ) -> List[str]:
+        """Convert explicit .feature targets into --include filters; absorb junit-directory paths."""
+        cmd_parts = self._ensure_behave_search_root(cmd_parts, behave_cwd)
+
+        explicit_features = self._collect_explicit_feature_targets(cmd_parts, extra_args)
+        if explicit_features:
+            cmd_parts = self._clean_feature_targets(cmd_parts)
+            if extra_args:
+                extra_args = self._clean_feature_targets(extra_args)
+            cmd_parts.extend(self._build_include_args(explicit_features, tests_path, behave_cwd))
+
+        for i, part in enumerate(cmd_parts):
+            if part == "--junit-directory" and i + 1 < len(cmd_parts):
+                cmd_parts[i + 1] = str(self.root_path / cmd_parts[i + 1])
+            elif part.startswith("--junit-directory="):
+                dir_path = part.split("=", 1)[1]
+                cmd_parts[i] = f"--junit-directory={self.root_path / dir_path}"
+
+        if extra_args:
+            cmd_parts.extend(extra_args)
+
+        return cmd_parts
+
+    def _execute_behave(self, cmd_parts: List[str], tests_path: Path, env: Dict) -> int:
+        """Run the behave subprocess and return its exit code."""
+        try:
+            self._log("DEBUG", f"Final command: {' '.join(cmd_parts)}")
+            self._log("DEBUG", f"CWD: {tests_path}")
+            result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
+            if result.returncode == 0:
+                self._log("INFO", "Tests executed successfully")
+            else:
+                self._log("ERROR", f"Tests failed with code {result.returncode}")
+            return result.returncode
+        except Exception as e:
+            self._log("ERROR", f"Error running tests: {e}")
+            return 1
+
     def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
         """Run BDD tests."""
         tests_config = self.config.get("tests", {})
@@ -366,73 +339,16 @@ class BDDFramework:
         ):
             self._ensure_reports_directory(command, extra_args)
 
-        cmd_parts = shlex.split(command)
-
-        if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
-            cmd_parts[0] = sys.executable
-        elif cmd_parts[0].lower() == "behave":
-            cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
-
         behave_cwd = self._get_behave_working_dir(tests_path, bdd_config)
-        cmd_parts = self._normalize_at_file_targets(cmd_parts, tests_path, behave_cwd)
-        if extra_args:
-            extra_args = self._normalize_at_file_targets(extra_args, tests_path, behave_cwd)
-
-        cmd_parts, at_file_features = self._expand_at_file_targets(
-            cmd_parts, tests_path, behave_cwd
+        cmd_parts, extra_args = self._prepare_behave_command(
+            command, tests_path, behave_cwd, extra_args
         )
-        if extra_args:
-            extra_args, extra_at_file_features = self._expand_at_file_targets(
-                extra_args, tests_path, behave_cwd
-            )
-            at_file_features.extend(extra_at_file_features)
-
-        if at_file_features:
-            if extra_args is None:
-                extra_args = []
-            extra_args.extend(at_file_features)
-
-        cmd_parts = self._ensure_behave_search_root(cmd_parts, behave_cwd)
-
-        explicit_features = self._collect_explicit_feature_targets(
-            cmd_parts, extra_args, tests_path
-        )
-        if explicit_features:
-            cmd_parts = self._clean_feature_targets(cmd_parts)
-            if extra_args:
-                extra_args = self._clean_feature_targets(extra_args)
-            cmd_parts.extend(self._build_include_args(explicit_features, tests_path, behave_cwd))
-
-        for i, part in enumerate(cmd_parts):
-            if part == "--junit-directory" and i + 1 < len(cmd_parts):
-                reports_path = self.root_path / cmd_parts[i + 1]
-                cmd_parts[i + 1] = str(reports_path)
-            elif part.startswith("--junit-directory="):
-                dir_path = part.split("=", 1)[1]
-                reports_path = self.root_path / dir_path
-                cmd_parts[i] = f"--junit-directory={reports_path}"
-
-        if extra_args:
-            cmd_parts.extend(extra_args)
+        cmd_parts = self._apply_feature_filters(cmd_parts, extra_args, tests_path, behave_cwd)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
         env = {**os.environ, **custom_env_str}
 
-        try:
-            self._log("DEBUG", f"Final command: {' '.join(cmd_parts)}")
-            self._log("DEBUG", f"CWD: {tests_path}")
-            result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
-
-            if result.returncode == 0:
-                self._log("INFO", "Tests executed successfully")
-            else:
-                self._log("ERROR", f"Tests failed with code {result.returncode}")
-
-            return result.returncode
-
-        except Exception as e:
-            self._log("ERROR", f"Error running tests: {e}")
-            return 1
+        return self._execute_behave(cmd_parts, tests_path, env)
 
     def run(self, extra_test_args: Optional[List[str]] = None) -> int:
         """Run the framework."""
