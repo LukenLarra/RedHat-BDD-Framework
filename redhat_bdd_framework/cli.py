@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -93,6 +94,35 @@ class BDDFramework:
             else:
                 self._log("INFO", f"Environment found at: {environment_path}")
 
+    _BEHAVE_FLAGS_WITH_VALUES = {
+        "--tags",
+        "-t",
+        "--format",
+        "-f",
+        "--outfile",
+        "-o",
+        "--junit-directory",
+        "--include",
+        "-i",
+        "--exclude",
+        "-e",
+        "--stage",
+        "--lang",
+        "--logging-level",
+        "--logging-format",
+        "--logging-filter",
+        "--logging-filename",
+        "--logging-filemode",
+        "--logging-datefmt",
+        "--runner",
+        "-r",
+        "--name",
+        "-n",
+        "-j",
+        "--jobs",
+        "--parallel",
+    }
+
     def _ensure_reports_directory(self, command: str, extra_args: Optional[List[str]] = None):
         """Create reports directory if it does not exist."""
         cmd_parts = command.split()
@@ -111,6 +141,91 @@ class BDDFramework:
                 reports_dir.mkdir(parents=True, exist_ok=True)
                 self._log("INFO", f"Reports directory created: {dir_path}")
                 break
+
+    def _get_behave_working_dir(self, tests_path: Path, bdd_config: Dict[str, Any]) -> Path:
+        """Return the working directory for behave when a custom steps path is configured."""
+        steps_path = bdd_config.get("steps") if bdd_config else None
+        if steps_path:
+            candidate = self.root_path / Path(steps_path).parent
+            if candidate.exists():
+                return candidate
+        return tests_path
+
+    def _collect_explicit_feature_targets(
+        self, cmd_parts: List[str], extra_args: Optional[List[str]], tests_path: Path
+    ) -> List[str]:
+        """Return explicit .feature targets from the behave command and extra args."""
+        parts = cmd_parts[:] + (extra_args or [])
+        behave_index = None
+        for i, token in enumerate(parts):
+            if token == "behave":
+                behave_index = i
+                break
+
+        if behave_index is not None:
+            parts = parts[behave_index + 1 :]
+
+        explicit_features = []
+        skip_next = False
+        for token in parts:
+            if skip_next:
+                skip_next = False
+                continue
+            if token in self._BEHAVE_FLAGS_WITH_VALUES:
+                skip_next = True
+                continue
+            if token.startswith("-"):
+                continue
+            if token.startswith("@"):
+                continue
+            if ".feature" in token:
+                explicit_features.append(token)
+
+        return explicit_features
+
+    def _clean_feature_targets(self, parts: List[str]) -> List[str]:
+        """Remove explicit feature path tokens from a parsed command segment."""
+        cleaned = []
+        skip_next = False
+        for token in parts:
+            if skip_next:
+                cleaned.append(token)
+                skip_next = False
+                continue
+            if token in self._BEHAVE_FLAGS_WITH_VALUES:
+                cleaned.append(token)
+                skip_next = True
+                continue
+            if token.startswith("-") or token.startswith("@"):
+                cleaned.append(token)
+                continue
+            if ".feature" in token:
+                continue
+            cleaned.append(token)
+        return cleaned
+
+    def _build_include_args(
+        self, feature_targets: List[str], tests_path: Path, cwd: Path
+    ) -> List[str]:
+        """Convert explicit feature paths into behave --include filter arguments."""
+        include_args = []
+        cwd_resolved = cwd.resolve(strict=False)
+
+        for feature in feature_targets:
+            feature_path = Path(feature)
+            if not feature_path.is_absolute():
+                feature_path = (tests_path / feature_path).resolve(strict=False)
+            else:
+                feature_path = feature_path.resolve(strict=False)
+
+            if feature_path.is_relative_to(cwd_resolved):
+                pattern = re.escape(feature_path.relative_to(cwd_resolved).as_posix())
+            else:
+                pattern = re.escape(feature_path.name)
+
+            include_args.append(f"--include={pattern}")
+
+        return include_args
 
     def _run_tests(self, extra_args: Optional[List[str]] = None) -> int:
         """Run BDD tests."""
@@ -136,14 +251,20 @@ class BDDFramework:
 
         cmd_parts = shlex.split(command)
 
-        # Evita mezclar @test_list o feature files inline con feature individual
-        if extra_args and any(".feature" in arg for arg in extra_args):
-            cmd_parts = [p for p in cmd_parts if not p.startswith("@") and ".feature" not in p]
-
         if cmd_parts[0].lower() in ["python", "python3", "python.exe"]:
             cmd_parts[0] = sys.executable
         elif cmd_parts[0].lower() == "behave":
             cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
+
+        behave_cwd = self._get_behave_working_dir(tests_path, bdd_config)
+        explicit_features = self._collect_explicit_feature_targets(
+            cmd_parts, extra_args, tests_path
+        )
+        if explicit_features:
+            cmd_parts = self._clean_feature_targets(cmd_parts)
+            if extra_args:
+                extra_args = self._clean_feature_targets(extra_args)
+            cmd_parts.extend(self._build_include_args(explicit_features, tests_path, behave_cwd))
 
         for i, part in enumerate(cmd_parts):
             if part == "--junit-directory" and i + 1 < len(cmd_parts):
@@ -155,15 +276,6 @@ class BDDFramework:
                 cmd_parts[i] = f"--junit-directory={reports_path}"
 
         if extra_args:
-            for i, arg in enumerate(extra_args):
-                if not arg.startswith("-") and ".feature" in arg:
-                    parts = arg.split(":", 1)
-                    feat_path = Path(parts[0])
-                    if not feat_path.is_absolute():
-                        feat_path = self.root_path / feat_path
-                    if feat_path.exists():
-                        parts[0] = str(feat_path.absolute())
-                        extra_args[i] = ":".join(parts)
             cmd_parts.extend(extra_args)
 
         custom_env_str = {str(k): str(v) for k, v in (tests_config.get("env", {}) or {}).items()}
@@ -171,8 +283,8 @@ class BDDFramework:
 
         try:
             self._log("DEBUG", f"Final command: {' '.join(cmd_parts)}")
-            self._log("DEBUG", f"CWD: {tests_path}")
-            result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
+            self._log("DEBUG", f"CWD: {behave_cwd}")
+            result = subprocess.run(cmd_parts, cwd=str(behave_cwd), env=env)
 
             if result.returncode == 0:
                 self._log("INFO", "Tests executed successfully")
