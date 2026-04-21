@@ -133,7 +133,9 @@ def write_summary(reports, output_path, patterns):
                 },
             )
             fstats["tests"] += 1
-            fstats[testcase["status"]] += 1
+            status = testcase["status"]
+            key = "errors" if status == "error" else status
+            fstats[key] += 1
             fstats["time"] += testcase["time"]
 
     lines = [

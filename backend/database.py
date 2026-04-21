@@ -1,29 +1,29 @@
 """
-Módulo de base de datos PostgreSQL con SQLAlchemy ORM para gestión de películas
+PostgreSQL database module using SQLAlchemy ORM for movie management
 """
 
 import os
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, scoped_session, sessionmaker
 
-# Leer DATABASE_URL de variables de entorno (configurada por el framework)
+# Read DATABASE_URL from environment variables (configured by the framework)
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/movies_db")
 
-# Crear engine de SQLAlchemy
+# Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
-# Configurar session factory con scoped_session para thread-safety
+# Configure session factory with scoped_session for thread-safety
 session_factory = sessionmaker(bind=engine)
 SessionLocal = scoped_session(session_factory)
 
 
-# Definir Base para modelos ORM
+# Define Base for ORM models
 class Base(DeclarativeBase):
     pass
 
 
-# Modelo ORM para la tabla movies
+# ORM model for the movies table
 class Movie(Base):
     __tablename__ = "movies"
 
@@ -33,45 +33,52 @@ class Movie(Base):
     director = Column(String(255), nullable=False)
 
     def to_dict(self):
-        """Convierte el objeto ORM a diccionario para JSON"""
+        """Convert the ORM object to a dictionary for JSON."""
         return {"id": self.id, "title": self.title, "year": self.year, "director": self.director}
 
 
-def init_db():
-    """Inicializa la base de datos y crea las tablas si no existen"""
-    # Crear todas las tablas definidas en Base
+def init_db(reset: bool = False):
+    """Initialize the database and create tables if they do not exist.
+
+    Always truncates the movies table and reloads 8 sample movies.
+    The reset parameter is kept for backward compatibility.
+    """
+    # Create all tables defined in Base
     Base.metadata.create_all(engine)
 
-    # Insertar datos de ejemplo si la tabla está vacía
     session = SessionLocal()
     try:
-        movie_count = session.query(Movie).count()
-        if movie_count == 0:
-            sample_movies = [
-                Movie(title="El Padrino", year=1972, director="Francis Ford Coppola"),
-                Movie(title="Pulp Fiction", year=1994, director="Quentin Tarantino"),
-                Movie(title="El Caballero Oscuro", year=2008, director="Christopher Nolan"),
-                Movie(title="Forrest Gump", year=1994, director="Robert Zemeckis"),
-                Movie(title="Inception", year=2010, director="Christopher Nolan"),
-                Movie(title="Matrix", year=1999, director="Lana y Lilly Wachowski"),
-                Movie(title="Interstellar", year=2014, director="Christopher Nolan"),
-                Movie(title="Gladiador", year=2000, director="Ridley Scott"),
-            ]
-            session.add_all(sample_movies)
-            session.commit()
-            print(f"✓ Base de datos inicializada con {len(sample_movies)} películas de ejemplo")
+        # Always truncate the movies table
+        if engine.dialect.name == "postgresql":
+            session.execute(text("TRUNCATE TABLE movies RESTART IDENTITY CASCADE"))
         else:
-            print(f"✓ Base de datos ya contiene {movie_count} películas")
+            session.query(Movie).delete()
+        session.commit()
+
+        # Always load sample movies
+        sample_movies = [
+            Movie(title="The Godfather", year=1972, director="Francis Ford Coppola"),
+            Movie(title="Pulp Fiction", year=1994, director="Quentin Tarantino"),
+            Movie(title="The Dark Knight", year=2008, director="Christopher Nolan"),
+            Movie(title="Forrest Gump", year=1994, director="Robert Zemeckis"),
+            Movie(title="Inception", year=2010, director="Christopher Nolan"),
+            Movie(title="The Matrix", year=1999, director="Lana and Lilly Wachowski"),
+            Movie(title="Interstellar", year=2014, director="Christopher Nolan"),
+            Movie(title="Gladiator", year=2000, director="Ridley Scott"),
+        ]
+        session.add_all(sample_movies)
+        session.commit()
+        print(f"[OK] Database reset with {len(sample_movies)} sample movies")
     except Exception as e:
         session.rollback()
-        print(f"✗ Error al inicializar base de datos: {e}")
+        print(f"[ERROR] Error initializing database: {e}")
         raise
     finally:
         session.close()
 
 
 def get_all_movies():
-    """Obtiene todas las películas de la base de datos"""
+    """Retrieve all movies from the database."""
     session = SessionLocal()
     try:
         movies = session.query(Movie).all()
@@ -81,7 +88,7 @@ def get_all_movies():
 
 
 def get_movie_by_id(movie_id):
-    """Obtiene una película por su ID"""
+    """Retrieve a movie by its ID."""
     session = SessionLocal()
     try:
         movie = session.query(Movie).filter(Movie.id == movie_id).first()
@@ -91,13 +98,13 @@ def get_movie_by_id(movie_id):
 
 
 def add_movie(title, year, director):
-    """Agrega una nueva película a la base de datos"""
+    """Add a new movie to the database."""
     session = SessionLocal()
     try:
         new_movie = Movie(title=title, year=year, director=director)
         session.add(new_movie)
         session.commit()
-        session.refresh(new_movie)  # Refrescar para obtener el ID generado
+        session.refresh(new_movie)  # Refresh to obtain generated ID
         movie_id = new_movie.id
         return movie_id
     except Exception:

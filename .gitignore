@@ -48,8 +48,11 @@ uv.lock
 .secrets
 .env.act
 
-
 # claude
 .claude/
 .agents/
 skills-lock.json
+superpowers/
+
+# playwright
+.playwright-mcp/

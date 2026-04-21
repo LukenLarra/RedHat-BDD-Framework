@@ -70,7 +70,7 @@ ignore = [
 
 # Configuración de isort (ordenamiento de imports)
 [tool.ruff.lint.isort]
-known-first-party = ["bdd_framework", "redhat_bdd_framework"]
+known-first-party = ["redhat_bdd_framework"]
 
 [tool.ruff.format]
 # Configuración del formateador (compatible con black)

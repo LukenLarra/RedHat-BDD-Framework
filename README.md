@@ -55,9 +55,9 @@ bdd-framework --config framework.yml
 > The requirements below apply to the **example project** included in this repository (Python backend + Node.js frontend + PostgreSQL). Your own project may have a completely different stack.
 
 - **Python 3.10+**
-- **Node.js 18+**
+- **Node.js 18+ and npm** — required both for the frontend and for `@ai` scenarios (MCP spawns `npx @playwright/mcp@latest` to drive the browser)
 - **PostgreSQL 12+** (to run locally)
-- **pip** and **npm** installed
+- **pip** installed
 
 ### Database Configuration
 

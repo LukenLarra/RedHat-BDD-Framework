@@ -101,6 +101,14 @@ jobs:
       - name: Install backend dependencies
         run: uv pip install --system -r backend/requirements.txt
 
+      # Playwright dependencies are optional and only needed if your tests use Playwright.
+      # ---------------------------------------------------------------------------------
+      - name: Install Playwright system dependencies
+        run: |
+          uv pip install --system playwright
+          playwright install-deps chromium
+      # ---------------------------------------------------------------------------------
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
@@ -154,6 +162,8 @@ jobs:
       # ──────────────────────────────────────────────────────────────────
       - name: Run BDD Framework (Parallel)
         uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
           service: "movies-api" # ← your service name
           feature_file: ${{ matrix.feature_file }}
