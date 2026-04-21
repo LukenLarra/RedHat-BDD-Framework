@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -166,7 +166,7 @@ class BDDFramework:
 
     def _ensure_reports_directory(self, command: str, extra_args: Optional[List[str]] = None):
         """Create reports directory if it does not exist."""
-        cmd_parts = command.split()
+        cmd_parts = shlex.split(command)
         if extra_args:
             cmd_parts.extend(extra_args)
 
@@ -184,13 +184,88 @@ class BDDFramework:
                 break
 
     def _get_behave_working_dir(self, tests_path: Path, bdd_config: Dict[str, Any]) -> Path:
-        """Return the working directory for behave when a custom steps path is configured."""
+        """Return the feature root directory for behave path resolution."""
         steps_path = bdd_config.get("steps") if bdd_config else None
         if steps_path:
             candidate = self.root_path / Path(steps_path).parent
             if candidate.exists():
                 return candidate
         return tests_path
+
+    def _expand_at_file_targets(
+        self, parts: List[str], tests_path: Path, behave_root: Path
+    ) -> Tuple[List[str], List[str]]:
+        """Expand behave @file.txt targets into explicit feature paths.
+
+        This allows us to run behave from a stable cwd while still selecting
+        scenario files listed in @file targets.
+        """
+        expanded: List[str] = []
+        extracted_features: List[str] = []
+        skip_next = False
+        base_candidates = [self.root_path, tests_path, behave_root]
+
+        for token in parts:
+            if skip_next:
+                expanded.append(token)
+                skip_next = False
+                continue
+            if token in self._BEHAVE_FLAGS_WITH_VALUES:
+                expanded.append(token)
+                skip_next = True
+                continue
+
+            if token.startswith("@") and len(token) > 1:
+                resolved = self._resolve_existing_path(token[1:], base_candidates)
+                if resolved and resolved.exists() and resolved.suffix == ".txt":
+                    try:
+                        with open(resolved, encoding="utf-8") as f:
+                            for line in f:
+                                entry = line.strip()
+                                if entry and not entry.startswith("#"):
+                                    extracted_features.append(entry)
+                        continue
+                    except OSError:
+                        # Keep original token if we cannot read the file.
+                        pass
+
+            expanded.append(token)
+
+        return expanded, extracted_features
+
+    def _ensure_behave_search_root(self, parts: List[str], behave_root: Path) -> List[str]:
+        """Ensure behave receives an explicit search root directory."""
+        behave_index = None
+        for i, token in enumerate(parts):
+            if token == "behave":
+                behave_index = i
+                break
+
+        inspect_parts = parts[behave_index + 1 :] if behave_index is not None else parts
+
+        has_path_target = False
+        skip_next = False
+
+        for token in inspect_parts:
+            if skip_next:
+                skip_next = False
+                continue
+            if token in self._BEHAVE_FLAGS_WITH_VALUES:
+                skip_next = True
+                continue
+            if token.startswith("-"):
+                continue
+            if token.startswith("@"):
+                continue
+            if ".feature" in token:
+                continue
+            has_path_target = True
+            break
+
+        if has_path_target:
+            return parts
+
+        return parts + [str(behave_root)]
 
     def _collect_explicit_feature_targets(
         self, cmd_parts: List[str], extra_args: Optional[List[str]], tests_path: Path
@@ -259,9 +334,10 @@ class BDDFramework:
             else:
                 feature_path = feature_path.resolve(strict=False)
 
-            if feature_path.is_relative_to(cwd_resolved):
-                pattern = re.escape(feature_path.relative_to(cwd_resolved).as_posix())
-            else:
+            try:
+                relative = feature_path.relative_to(cwd_resolved)
+                pattern = re.escape(relative.as_posix())
+            except ValueError:
                 pattern = re.escape(feature_path.name)
 
             include_args.append(f"--include={pattern}")
@@ -302,6 +378,22 @@ class BDDFramework:
         if extra_args:
             extra_args = self._normalize_at_file_targets(extra_args, tests_path, behave_cwd)
 
+        cmd_parts, at_file_features = self._expand_at_file_targets(
+            cmd_parts, tests_path, behave_cwd
+        )
+        if extra_args:
+            extra_args, extra_at_file_features = self._expand_at_file_targets(
+                extra_args, tests_path, behave_cwd
+            )
+            at_file_features.extend(extra_at_file_features)
+
+        if at_file_features:
+            if extra_args is None:
+                extra_args = []
+            extra_args.extend(at_file_features)
+
+        cmd_parts = self._ensure_behave_search_root(cmd_parts, behave_cwd)
+
         explicit_features = self._collect_explicit_feature_targets(
             cmd_parts, extra_args, tests_path
         )
@@ -328,8 +420,8 @@ class BDDFramework:
 
         try:
             self._log("DEBUG", f"Final command: {' '.join(cmd_parts)}")
-            self._log("DEBUG", f"CWD: {behave_cwd}")
-            result = subprocess.run(cmd_parts, cwd=str(behave_cwd), env=env)
+            self._log("DEBUG", f"CWD: {tests_path}")
+            result = subprocess.run(cmd_parts, cwd=str(tests_path), env=env)
 
             if result.returncode == 0:
                 self._log("INFO", "Tests executed successfully")
