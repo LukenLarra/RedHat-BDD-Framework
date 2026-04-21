@@ -123,6 +123,47 @@ class BDDFramework:
         "--parallel",
     }
 
+    def _resolve_existing_path(self, raw_path: str, candidates: List[Path]) -> Optional[Path]:
+        """Resolve a path against multiple candidate bases and return the first existing match."""
+        path = Path(raw_path)
+        if path.is_absolute():
+            return path if path.exists() else None
+
+        for base in candidates:
+            candidate = (base / path).resolve(strict=False)
+            if candidate.exists():
+                return candidate
+
+        return None
+
+    def _normalize_at_file_targets(
+        self, parts: List[str], tests_path: Path, behave_cwd: Path
+    ) -> List[str]:
+        """Convert behave @file targets to absolute paths so cwd changes do not break them."""
+        normalized: List[str] = []
+        skip_next = False
+        base_candidates = [self.root_path, tests_path, behave_cwd]
+
+        for token in parts:
+            if skip_next:
+                normalized.append(token)
+                skip_next = False
+                continue
+            if token in self._BEHAVE_FLAGS_WITH_VALUES:
+                normalized.append(token)
+                skip_next = True
+                continue
+
+            if token.startswith("@") and len(token) > 1:
+                resolved = self._resolve_existing_path(token[1:], base_candidates)
+                if resolved:
+                    normalized.append(f"@{resolved}")
+                    continue
+
+            normalized.append(token)
+
+        return normalized
+
     def _ensure_reports_directory(self, command: str, extra_args: Optional[List[str]] = None):
         """Create reports directory if it does not exist."""
         cmd_parts = command.split()
@@ -257,6 +298,10 @@ class BDDFramework:
             cmd_parts = [sys.executable, "-m", "behave"] + cmd_parts[1:]
 
         behave_cwd = self._get_behave_working_dir(tests_path, bdd_config)
+        cmd_parts = self._normalize_at_file_targets(cmd_parts, tests_path, behave_cwd)
+        if extra_args:
+            extra_args = self._normalize_at_file_targets(extra_args, tests_path, behave_cwd)
+
         explicit_features = self._collect_explicit_feature_targets(
             cmd_parts, extra_args, tests_path
         )
