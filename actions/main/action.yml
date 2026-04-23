@@ -52,8 +52,13 @@ runs:
   steps:
     - name: Install BDD framework dependencies
       shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python_version }}
+        TEST_REQUIREMENTS: ${{ inputs.test_requirements }}
+        SERVICE_PACKAGE: ${{ inputs.service_package }}
       run: |
         REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
+        echo "REPO_ROOT=${REPO_ROOT}" >> "$GITHUB_ENV"
         if [[ "${{ github.action_path }}" == /mnt/* ]]; then
           BDD_VENV=/tmp/bdd-framework-venv
         else
@@ -61,8 +66,8 @@ runs:
         fi
         echo "BDD_VENV_PATH=${BDD_VENV}" >> "$GITHUB_ENV"
         command -v uv > /dev/null 2>&1 || python -m pip install uv --quiet
-        if [[ -n "${{ inputs.python_version }}" ]]; then
-          uv venv --python "${{ inputs.python_version }}" "${BDD_VENV}"
+        if [[ -n "$PYTHON_VERSION" ]]; then
+          uv venv --python "$PYTHON_VERSION" "${BDD_VENV}"
         else
           uv venv "${BDD_VENV}"
         fi
@@ -73,57 +78,47 @@ runs:
         uv pip install --quiet \
           --python "${BDD_VENV}/bin/python" \
           "${REPO_ROOT}"
-        if [[ -n "${{ inputs.test_requirements }}" ]]; then
+        if [[ -n "$TEST_REQUIREMENTS" ]]; then
           uv pip install --quiet \
             --python "${BDD_VENV}/bin/python" \
-            -r "${{ inputs.test_requirements }}"
+            -r "$TEST_REQUIREMENTS"
         fi
-        if [[ -n "${{ inputs.service_package }}" ]]; then
+        if [[ -n "$SERVICE_PACKAGE" ]]; then
           uv pip install --quiet \
             --python "${BDD_VENV}/bin/python" \
-            "${{ inputs.service_package }}"
+            "$SERVICE_PACKAGE"
         fi
         "${BDD_VENV}/bin/playwright" install chromium
         echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
       shell: bash
+      env:
+        FEATURE_FILE: ${{ inputs.feature_file }}
+        BDD_CONFIG: ${{ inputs.bdd_config }}
       run: |
-        REPO_ROOT="$(cd "${{ github.action_path }}/../.." && pwd)"
-        if [[ -n "${{ inputs.feature_file }}" ]]; then
-          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}" --feature-file "${{ inputs.feature_file }}"
+        if [[ -n "$FEATURE_FILE" ]]; then
+          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "$BDD_CONFIG" --feature-file "$FEATURE_FILE"
         else
-          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "${{ inputs.bdd_config }}"
+          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "$BDD_CONFIG"
         fi
 
     - name: Normalize report paths
       if: always()
       shell: bash
+      env:
+        BDD_CONFIG: ${{ inputs.bdd_config }}
+        ARTIFACTS_LOG_DIR: ${{ inputs.artifacts_log_dir }}
       run: |
-          SRC="$(dirname "${{ inputs.bdd_config }}")/reports/${{ inputs.artifacts_log_dir }}"
-          DST="${GITHUB_WORKSPACE}/reports/${{ inputs.artifacts_log_dir }}"
-          if [ -d "$SRC" ] && [ "$SRC" != "$DST" ]; then
-            mkdir -p "$DST"
-            cp -r "$SRC"/. "$DST/"
-          fi
-
-    - name: Check for test reports
-      id: check_reports
-      if: always()
-      shell: bash
-      run: |
-        if [ -d "reports/${{ inputs.artifacts_log_dir }}" ] && \
-           [ -n "$(ls -A reports/${{ inputs.artifacts_log_dir }}/*.xml 2>/dev/null)" ]; then
-          echo "reports_exist=true" >> $GITHUB_OUTPUT
-          echo "✅ Test reports found"
-          ls -lh "reports/${{ inputs.artifacts_log_dir }}/"
-        else
-          echo "reports_exist=false" >> $GITHUB_OUTPUT
-          echo "⚠️  No test reports found in reports/${{ inputs.artifacts_log_dir }}"
+        SRC="$(dirname "$BDD_CONFIG")/reports/$ARTIFACTS_LOG_DIR"
+        DST="${GITHUB_WORKSPACE}/reports/$ARTIFACTS_LOG_DIR"
+        if [ -d "$SRC" ] && [ "$SRC" != "$DST" ]; then
+          mkdir -p "$DST"
+          cp -r "$SRC"/. "$DST/"
         fi
 
     - name: Upload test reports
-      if: always() && steps.check_reports.outputs.reports_exist == 'true' && !env.ACT
+      if: always() && !env.ACT
       uses: actions/upload-artifact@v4
       with:
         name: bdd-test-reports-${{ inputs.service }}${{ inputs.artifact_name_suffix }}
