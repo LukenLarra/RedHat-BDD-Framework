@@ -119,18 +119,7 @@ jobs:
       - name: Start backend
         run: |
           nohup python backend/app.py > backend.log 2>&1 &
-          echo "Waiting for backend..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8000/health; then
-              echo "Backend ready"
-              exit 0
-            fi
-            echo "  attempt $i/30..."
-            sleep 1
-          done
-          echo "Backend failed to start. Logs:"
-          cat backend.log
-          exit 1
+          bash "$GITHUB_WORKSPACE/scripts/wait_for_service.sh" http://localhost:8000/health backend.log 30 1
         env:
           API_HOST: "0.0.0.0"
           API_PORT: "8000"
@@ -139,18 +128,7 @@ jobs:
       - name: Start frontend
         run: |
           nohup node server.js > frontend.log 2>&1 &
-          echo "Waiting for frontend..."
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:3000; then
-              echo "Frontend ready"
-              exit 0
-            fi
-            echo "  attempt $i/30..."
-            sleep 2
-          done
-          echo "Frontend failed to start. Logs:"
-          cat frontend.log
-          exit 1
+          bash "$GITHUB_WORKSPACE/scripts/wait_for_service.sh" http://localhost:3000 frontend.log 30 2
         working-directory: frontend
         env:
           PORT: "3000"
