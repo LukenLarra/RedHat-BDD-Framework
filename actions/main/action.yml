@@ -110,8 +110,8 @@ runs:
         BDD_CONFIG: ${{ inputs.bdd_config }}
         ARTIFACTS_LOG_DIR: ${{ inputs.artifacts_log_dir }}
       run: |
-        SRC="$(dirname "$BDD_CONFIG")/reports/$ARTIFACTS_LOG_DIR"
-        DST="${GITHUB_WORKSPACE}/reports/$ARTIFACTS_LOG_DIR"
+        SRC="$(realpath -m "$(dirname "$BDD_CONFIG")/reports/$ARTIFACTS_LOG_DIR")"
+        DST="$(realpath -m "${GITHUB_WORKSPACE}/reports/$ARTIFACTS_LOG_DIR")"
         if [ -d "$SRC" ] && [ "$SRC" != "$DST" ]; then
           mkdir -p "$DST"
           cp -r "$SRC"/. "$DST/"
