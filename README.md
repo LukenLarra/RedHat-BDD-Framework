@@ -4,6 +4,8 @@
 
 The **RedHat BDD Framework** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily, using mock data or stub services. This framework is technology stack-independent and can run both locally and in CI/CD environments.
 
+> **Key principle:** The framework is responsible only for **running your tests**. Starting your services (API, frontend, database) is your responsibility — either locally before running the CLI, or in your CI workflow before calling the action.
+
 ---
 
 ## ⚡ **Quick Start**
@@ -27,11 +29,23 @@ make install-tests
 - **Frontend (Node.js):**
 
 ```bash
-cd ../frontend
+cd frontend
 npm install
 ```
 
-### 3. Run the framework
+### 3. Start services
+
+Before running the framework, start your services manually:
+
+```bash
+# Terminal 1 — backend
+cd backend && python app.py
+
+# Terminal 2 — frontend
+cd frontend && node server.js
+```
+
+### 4. Run the framework
 
 - **With Python:**
 
@@ -54,7 +68,7 @@ bdd-framework --config framework.yml
 
 > The requirements below apply to the **example project** included in this repository (Python backend + Node.js frontend + PostgreSQL). Your own project may have a completely different stack.
 
-- **Python 3.10+**
+- **Python 3.8+**
 - **Node.js 18+ and npm** — required both for the frontend and for `@ai` scenarios (MCP spawns `npx @playwright/mcp@latest` to drive the browser)
 - **PostgreSQL 12+** (to run locally)
 - **pip** installed
@@ -65,7 +79,7 @@ The framework is database-agnostic — it does not connect to any database direc
 
 #### Option 1: Local PostgreSQL (Development)
 
-1. **Install PostgreSQL** (if you don’t have it):
+1. **Install PostgreSQL** (if you don't have it):
    - Windows: Download from [postgresql.org](https://www.postgresql.org/download/)
    - Linux: `sudo apt-get install postgresql`
    - macOS: `brew install postgresql`
@@ -240,7 +254,6 @@ jobs:
           # summary_output: "reports/bdd-test-summary.md"
           # summary_to_job: "true"
           # summary_artifact_name: "bdd-test-summary"
-          # summary_artifact_name: "bdd-test-summary"
 ```
 
 > **Tip:** The `services:` health check guarantees the database is fully ready before step 1 runs — no manual wait loops needed.
@@ -290,7 +303,9 @@ For import resolution of project modules, the framework sets `PYTHONPATH` in the
 
 ## 🔧 **Framework Configuration**
 
-The `framework.yml` file is the core of the configuration. Here, services, dependencies, and tests are defined.
+The `framework.yml` file is the core of the configuration. It defines how the framework locates and runs your tests, which environment variables to inject, and where to write reports.
+
+> **Note:** The framework does **not** start or stop your services. Service lifecycle is entirely your responsibility — start them before invoking the framework (locally or in CI).
 
 ### Workflow and Configuration Requirements
 
@@ -331,31 +346,27 @@ You can customize the names and locations, but you must update the configuration
 
 ### Configuration Example
 
-The `start_command` values are just shell commands — use whatever your stack requires (`bundle exec rails server`, `mvn spring-boot:run`, `node server.js`, etc.).
-
 ```yaml
 project:
   name: "RedHat-BDD-Framework"
-  version: "1.0.0"
-
-services:
-  api:
-    enabled: true
-    path: "backend"
-    start_command: "python app.py" # or: bundle exec rails s, mvn spring-boot:run, node server.js…
-    port: 8000
-
-  web:
-    enabled: true
-    path: "frontend"
-    start_command: "node server.js" # optional — omit this block if you have no frontend
-    port: 3000
+  version: "2.0.0"
 
 tests:
   enabled: true
   path: "tests"
   command: "python run_bdd_tests.py --junit --junit-directory reports/junit --format pretty"
+  bdd:
+    features: "tests/features"
+    steps: "tests/features/steps"
+    environment: "tests/features/environment.py"
+  env:
+    API_URL: "http://localhost:8000"
+    # DATABASE_URL is set at the job level in CI and inherited automatically.
+    # You can also set it here for local development:
+    # DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/movies_db"
 ```
+
+The `command` value is any shell command that invokes Behave — use whatever fits your project (`python run_bdd_tests.py`, `behave`, etc.). The framework resolves relative paths in the command against the project root, so you don't need absolute paths.
 
 ---
 
@@ -366,6 +377,7 @@ tests:
 - The framework is database-agnostic; your application must handle its own database connection using an environment variable (e.g., `DATABASE_URL`).
 - The framework does not validate the internal logic of your tests or guarantee compatibility with non-standard stacks.
 - No built-in support for stacks or languages outside Python for BDD steps.
+- The framework does not start, stop, or health-check your services. You are responsible for ensuring services are up before running tests.
 
 ---
 
@@ -397,26 +409,71 @@ def step_api_running(context):
     pass
 ```
 
+### Tagging Scenarios
+
+You can tag scenarios to run subsets of your test suite:
+
+```gherkin
+@smoke
+Scenario: Health check
+  Given the API is running
+  Then I get a response with status code 200
+
+@ai
+Scenario: Semantic response validation
+  Given the API is running
+  When I make a GET request to "/api/movies"
+  Then the response semantically matches the expected schema
+```
+
+Run a specific tag with the `--tags` flag (see [CLI Reference](#cli-reference) below).
+
 ---
 
 ## 🚀 **Running the Framework**
 
-The framework uses a unified production configuration that works both in local development and CI/CD environments. This ensures consistency across all environments.
+The framework works the same way locally and in CI/CD — it reads `framework.yml`, injects the configured environment variables, and runs Behave.
 
 ### Basic Execution
 
 ```bash
+# Using the Python module
 python -m redhat_bdd_framework --config framework.yml
+
+# Using the installed CLI entry point
+bdd-framework --config framework.yml
 ```
 
-### Execution Features
+### CLI Reference
 
-- **Robust health checks:** 60-second timeout with 2-second intervals
-- **Environment variables:** Configured per service in `framework.yml`
-- **Automatic JUnit reports:** Generated in `reports/junit/` for CI/CD integration
-- **New report summary artifacts:** added in PR [#67](https://github.com/LukenLarra/RedHat-BDD-Framework/actions/runs/24399282526?pr=67)
-- **Startup delay:** 5 seconds to ensure service stability
-- **Stop on failure:** Tests stop at the first failure
+| Flag             | Type                          | Description                                                                                                                                 |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--config`       | `string`                      | Path to the YAML config file. Default: `framework.yml`.                                                                                     |
+| `--tags`         | `string`                      | Behave tag expression to filter scenarios (e.g. `@smoke`, `@critical`).                                                                     |
+| `--format`       | `pretty` \| `plain` \| `json` | Behave output format.                                                                                                                       |
+| `--no-capture`   | flag                          | Disable stdout capture — output is printed live. Useful for debugging.                                                                      |
+| `--feature-file` | `string`                      | Run a single feature file (e.g. `tests/features/movies.feature`). Also supports `file.feature:LINE` notation to target a specific scenario. |
+
+Any unrecognised flags are passed through directly to Behave.
+
+#### Examples
+
+```bash
+# Run only scenarios tagged @smoke
+bdd-framework --config framework.yml --tags @smoke
+
+# Run a single feature file
+bdd-framework --config framework.yml --feature-file tests/features/movies.feature
+
+# Run a single scenario by line number
+bdd-framework --config framework.yml --feature-file tests/features/movies.feature:8
+
+# Run AI-powered scenarios with live output
+bdd-framework --config framework.yml --tags @ai --format pretty --no-capture
+
+# Pass extra Behave flags directly
+bdd-framework --config framework.yml --stop --no-skipped
+```
 
 ### Testing CI/CD Locally with act
 
@@ -453,7 +510,7 @@ When you run `act push`:
 
    > **Note:** The built-in cache server in act is only briefly mentioned in the [official man page](https://man.archlinux.org/man/extra/act/act.1.en), and there is currently no dedicated documentation available for its usage. However, this functionality is available and works in act.
 
-4. **Optimized execution**: The framework now uses hardlinks for `uv` dependencies in `/tmp`, avoiding redundant file copies.
+4. **Optimized execution**: The framework uses hardlinks for `uv` dependencies in `/tmp`, avoiding redundant file copies.
 5. Executes the workflow steps as defined in your GitHub Actions file.
 
 #### Important notes
@@ -487,7 +544,7 @@ This will parse the XML reports and output a `bdd-test-summary.md` file in the `
 - **Backend:** Python (FastAPI + Uvicorn) with PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
-- **Orchestrator:** `-m redhat_bdd_framework` to manage services and tests
+- **Orchestrator:** `redhat_bdd_framework` CLI — reads `framework.yml`, injects env vars, and runs Behave
 - **Database:** PostgreSQL 12+ (ephemeral in CI, local in development)
 
 ---
