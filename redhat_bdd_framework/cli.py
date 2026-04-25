@@ -219,8 +219,12 @@ class BDDFramework:
     def _build_include_args(
         self, feature_targets: List[str], tests_path: Path, cwd: Path
     ) -> List[str]:
-        """Convert explicit feature paths into behave --include filter arguments."""
-        include_args = []
+        """Convert explicit feature paths into a single behave --include filter argument.
+
+        behave's --include uses `store` (not `append`), so multiple flags overwrite each
+        other. All patterns are combined into one regex with | so every target is matched.
+        """
+        patterns = []
         cwd_resolved = cwd.resolve(strict=False)
 
         for feature in feature_targets:
@@ -236,9 +240,11 @@ class BDDFramework:
             except ValueError:
                 pattern = re.escape(feature_path.name)
 
-            include_args.append(f"--include={pattern}")
+            patterns.append(pattern)
 
-        return include_args
+        if not patterns:
+            return []
+        return [f"--include={'|'.join(patterns)}"]
 
     def _prepare_behave_command(
         self,

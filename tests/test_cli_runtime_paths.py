@@ -71,6 +71,61 @@ class TestBDDCliRuntimePaths(unittest.TestCase):
             )
             self.assertFalse(any(arg.startswith("@") for arg in args))
 
+    def test_multiple_features_in_txt_produce_single_include_with_or(self):
+        """Multiple features in @file.txt must generate one --include with | not N separate flags.
+
+        behave's --include uses argparse `store` action, so each flag overwrites the
+        previous one. Passing N separate --include flags would silently drop all but
+        the last feature.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+
+            features_root = root / "features"
+            features_root.mkdir(parents=True)
+            for name in ("alpha.feature", "beta.feature", "gamma.feature"):
+                (features_root / name).write_text(f"Feature: {name}\n", encoding="utf-8")
+
+            test_list_dir = root / "test_list"
+            test_list_dir.mkdir()
+            txt_file = test_list_dir / "suite.txt"
+            txt_file.write_text(
+                "features/alpha.feature\nfeatures/beta.feature\nfeatures/gamma.feature\n",
+                encoding="utf-8",
+            )
+
+            config = {
+                "tests": {
+                    "enabled": True,
+                    "path": ".",
+                    "command": "python -m behave @test_list/suite.txt --format pretty",
+                    "bdd": {"features": "features"},
+                }
+            }
+
+            config_path = root / "framework.yml"
+            config_path.write_text(yaml.dump(config), encoding="utf-8")
+
+            framework = BDDFramework(str(config_path))
+
+            with patch("redhat_bdd_framework.cli.subprocess.run") as mock_run:
+                mock_proc = Mock()
+                mock_proc.returncode = 0
+                mock_run.return_value = mock_proc
+                framework.run()
+
+            args = mock_run.call_args[0][0]
+            include_args = [a for a in args if a.startswith("--include=")]
+
+            self.assertEqual(
+                len(include_args), 1, f"Expected exactly one --include, got: {include_args}"
+            )
+            pattern = include_args[0].split("=", 1)[1]
+            self.assertIn("alpha", pattern)
+            self.assertIn("beta", pattern)
+            self.assertIn("gamma", pattern)
+            self.assertIn("|", pattern)
+
 
 if __name__ == "__main__":
     unittest.main()
