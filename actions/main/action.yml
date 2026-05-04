@@ -46,6 +46,12 @@ inputs:
       If empty, uses the runner's default Python.
     required: false
     default: ""
+  tags:
+    description: >
+      Behave tag expression to filter scenarios (e.g. '@smoke', '~@ui').
+      Leave empty to run all scenarios.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -88,7 +94,7 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             "$SERVICE_PACKAGE"
         fi
-        "${BDD_VENV}/bin/playwright" install chromium
+        [[ -z "${ACT:-}" ]] && "${BDD_VENV}/bin/playwright" install chromium || true
         echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
     - name: Run BDD Framework
@@ -96,12 +102,12 @@ runs:
       env:
         FEATURE_FILE: ${{ inputs.feature_file }}
         BDD_CONFIG: ${{ inputs.bdd_config }}
+        TAGS: ${{ inputs.tags }}
       run: |
-        if [[ -n "$FEATURE_FILE" ]]; then
-          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "$BDD_CONFIG" --feature-file "$FEATURE_FILE"
-        else
-          "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework --config "$BDD_CONFIG"
-        fi
+        ARGS=("--config" "$BDD_CONFIG")
+        [[ -n "$FEATURE_FILE" ]] && ARGS+=("--feature-file" "$FEATURE_FILE")
+        [[ -n "$TAGS" ]] && ARGS+=("--tags=$TAGS")
+        "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework "${ARGS[@]}"
 
     - name: Normalize report paths
       if: always()
