@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: wait_for_service.sh <url> <log_file> [retries] [delay_seconds]
-set -eu
+set -euo pipefail
 
 URL="$1"
 LOG_FILE="$2"

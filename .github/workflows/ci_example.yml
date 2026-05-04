@@ -60,7 +60,9 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "backend/requirements.txt"
+          cache-dependency-glob: |
+            backend/requirements.txt
+            tests/requirements.txt
 
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
@@ -121,6 +123,8 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
           service: "movies-api"
+          # env.ACT is set by act (local runner) but absent on GitHub CI.
+          # The expression returns '~@ui' locally to skip browser-heavy scenarios.
           tags: ${{ env.ACT && '~@ui' || '' }}
 
           # ← Optional: path to your framework config file

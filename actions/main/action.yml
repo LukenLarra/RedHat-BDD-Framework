@@ -94,6 +94,9 @@ runs:
             --python "${BDD_VENV}/bin/python" \
             "$SERVICE_PACKAGE"
         fi
+        # Playwright browser binary is only needed for @ui scenarios.
+        # Under act (local runner), ACT is set and the binary is skipped to avoid heavy downloads.
+        # Callers must pass tags=~@ui (or ~@ui,~@ai) when ACT is set, otherwise browser launch will fail.
         [[ -z "${ACT:-}" ]] && "${BDD_VENV}/bin/playwright" install chromium || true
         echo "${BDD_VENV}/bin" >> "$GITHUB_PATH"
 
