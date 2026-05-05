@@ -163,10 +163,16 @@ class BDDFramework:
             resolved = resolve_path(Path(token[1:]), base_candidates)
             if resolved and resolved.exists() and resolved.suffix == ".txt":
                 try:
+                    txt_dir = resolved.parent
                     with open(resolved, encoding="utf-8") as f:
                         for line in f:
                             entry = line.strip()
                             if entry and not entry.startswith("#"):
+                                entry_path = Path(entry)
+                                if not entry_path.is_absolute():
+                                    resolved_entry = (txt_dir / entry_path).resolve(strict=False)
+                                    if resolved_entry.exists():
+                                        entry = str(resolved_entry)
                                 extracted_features.append(entry)
                     continue
                 except OSError:
