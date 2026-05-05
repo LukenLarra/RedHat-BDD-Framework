@@ -172,7 +172,12 @@ class BDDFramework:
                                 if not entry_path.is_absolute():
                                     resolved_entry = (txt_dir / entry_path).resolve(strict=False)
                                     if resolved_entry.exists():
-                                        entry = str(resolved_entry)
+                                        parts = resolved_entry.parts
+                                        if "features" in parts:
+                                            idx = parts.index("features")
+                                            entry = "/".join(parts[idx + 1 :])
+                                        else:
+                                            entry = str(resolved_entry)
                                 extracted_features.append(entry)
                     continue
                 except OSError:
@@ -244,7 +249,13 @@ class BDDFramework:
                 relative = feature_path.relative_to(cwd_resolved)
                 pattern = re.escape(relative.as_posix())
             except ValueError:
-                pattern = re.escape(feature_path.name)
+                # Retain parent directories after 'features' to avoid conflicts
+                parts = feature_path.parts
+                if "features" in parts:
+                    idx = parts.index("features")
+                    pattern = re.escape("/".join(parts[idx + 1 :]))
+                else:
+                    pattern = re.escape(feature_path.name)
 
             patterns.append(pattern)
 
