@@ -170,14 +170,7 @@ class BDDFramework:
                             if entry and not entry.startswith("#"):
                                 entry_path = Path(entry)
                                 if not entry_path.is_absolute():
-                                    resolved_entry = (txt_dir / entry_path).resolve(strict=False)
-                                    if resolved_entry.exists():
-                                        parts = resolved_entry.parts
-                                        if "features" in parts:
-                                            idx = parts.index("features")
-                                            entry = "/".join(parts[idx + 1 :])
-                                        else:
-                                            entry = str(resolved_entry)
+                                    entry = str((txt_dir / entry_path).resolve(strict=False))
                                 extracted_features.append(entry)
                     continue
                 except OSError:
@@ -237,6 +230,8 @@ class BDDFramework:
         """
         patterns = []
         cwd_resolved = cwd.resolve(strict=False)
+        tests_path_resolved = tests_path.resolve(strict=False)
+        root_path_resolved = self.root_path.resolve(strict=False)
 
         for feature in feature_targets:
             feature_path = Path(feature)
@@ -245,17 +240,17 @@ class BDDFramework:
             else:
                 feature_path = feature_path.resolve(strict=False)
 
-            try:
-                relative = feature_path.relative_to(cwd_resolved)
-                pattern = re.escape(relative.as_posix())
-            except ValueError:
-                # Retain parent directories after 'features' to avoid conflicts
-                parts = feature_path.parts
-                if "features" in parts:
-                    idx = parts.index("features")
-                    pattern = re.escape("/".join(parts[idx + 1 :]))
-                else:
-                    pattern = re.escape(feature_path.name)
+            pattern = None
+            for base in (cwd_resolved, tests_path_resolved, root_path_resolved):
+                try:
+                    relative = feature_path.relative_to(base)
+                    pattern = re.escape(relative.as_posix())
+                    break
+                except ValueError:
+                    continue
+
+            if pattern is None:
+                pattern = re.escape(f"{feature_path.parent.name}/{feature_path.name}")
 
             patterns.append(pattern)
 
