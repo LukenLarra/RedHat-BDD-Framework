@@ -123,6 +123,14 @@ def reset_test_database(context):
 # ── Hooks ────────────────────────────────────────────────────────────────────
 
 
+def _ui_tag_active(context) -> bool:
+    runner = getattr(context, "_runner", None)
+    tag_matcher = getattr(runner.config, "tags", None) if runner else None
+    if tag_matcher is None:
+        return True
+    return tag_matcher.check(["ui"])
+
+
 def before_all(context):
     dotenv.load_dotenv()
 
@@ -140,11 +148,15 @@ def before_all(context):
 
     _wait_for_service(f"{context.api_url}/health", label="API")
 
-    # Playwright Python (for non-AI tests)
-    context.playwright = sync_playwright().start()
-    context.browser = context.playwright.chromium.launch(
-        headless=not context.local  # headed locally, headless in CI
-    )
+    # Playwright Python (for non-AI UI tests) — only launched if @ui scenarios are not excluded
+    if _ui_tag_active(context):
+        context.playwright = sync_playwright().start()
+        context.browser = context.playwright.chromium.launch(
+            headless=not context.local  # headed locally, headless in CI
+        )
+    else:
+        context.playwright = None
+        context.browser = None
 
     # Shared MCP session (for @ai tests)
     # Only started if API key present — @ai tests will be skipped in CI without key
@@ -174,9 +186,9 @@ def before_scenario(context, scenario):
     context.response = None
     context.status_code = None
 
-    # Playwright Python solo para scenarios no-AI
+    # Playwright Python solo para scenarios @ui no-AI
     # Los scenarios @ai usan el browser del MCP
-    if "ai" not in scenario.effective_tags:
+    if "ui" in scenario.effective_tags and "ai" not in scenario.effective_tags and context.browser:
         context.browser_context = context.browser.new_context()
         context.page = context.browser_context.new_page()
     else:
@@ -202,9 +214,9 @@ def after_all(context):
     if hasattr(context, "mcp_manager") and context.mcp_manager:
         context.mcp_manager.stop()
 
-    if hasattr(context, "browser"):
+    if hasattr(context, "browser") and context.browser:
         context.browser.close()
-    if hasattr(context, "playwright"):
+    if hasattr(context, "playwright") and context.playwright:
         context.playwright.stop()
 
     reset_test_database(context)

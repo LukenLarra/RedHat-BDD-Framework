@@ -60,7 +60,9 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "**/requirements*.txt"
+          cache-dependency-glob: |
+            backend/requirements.txt
+            tests/requirements.txt
 
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
@@ -74,12 +76,21 @@ jobs:
       - name: Install backend dependencies
         run: uv pip install --system -r backend/requirements.txt
 
-      # Playwright dependencies are optional and only needed if your tests use Playwright.
+      # Playwright dependencies are optional and only needed if your tests test the frontend.
       # ---------------------------------------------------------------------------------
+      - name: Cache Playwright browsers
+        if: ${{ !env.ACT }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}
+
       - name: Install Playwright system dependencies
+        if: ${{ !env.ACT }}
         run: |
           uv pip install --system playwright
           playwright install-deps chromium
+          playwright install chromium
       # ---------------------------------------------------------------------------------
 
       - name: Install frontend dependencies
@@ -91,18 +102,14 @@ jobs:
       # use specific steps instead of the `services` block.
       # Replace with your own start commands.
       - name: Start backend
-        run: |
-          nohup python backend/app.py > backend.log 2>&1 &
-          bash "$GITHUB_WORKSPACE/scripts/wait_for_service.sh" http://localhost:8000/health backend.log 30 1
+        run: bash "$GITHUB_WORKSPACE/scripts/start_service.sh" "python backend/app.py" http://localhost:8000/health backend.log 30 1
         env:
           API_HOST: "0.0.0.0"
           API_PORT: "8000"
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Start frontend
-        run: |
-          nohup node server.js > frontend.log 2>&1 &
-          bash "$GITHUB_WORKSPACE/scripts/wait_for_service.sh" http://localhost:3000 frontend.log 30 2
+        run: bash "$GITHUB_WORKSPACE/scripts/start_service.sh" "node server.js" http://localhost:3000 frontend.log 30 2
         working-directory: frontend
         env:
           PORT: "3000"
@@ -116,6 +123,9 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
           service: "movies-api"
+          # env.ACT is set by act (local runner) but absent on GitHub CI.
+          # The expression returns '~@ui' locally to skip browser-heavy scenarios.
+          tags: ${{ env.ACT && '~@ui' || '' }}
 
           # ← Optional: path to your framework config file
           # bdd_config: "framework.yml"
