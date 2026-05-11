@@ -124,11 +124,14 @@ def reset_test_database(context):
 
 
 def _ui_tag_active(context) -> bool:
-    runner = getattr(context, "_runner", None)
-    tag_matcher = getattr(runner.config, "tags", None) if runner else None
-    if tag_matcher is None:
+    try:
+        runner = getattr(context, "_runner", None)
+        tag_matcher = getattr(runner.config, "tags", None) if runner else None
+        if tag_matcher is None:
+            return True
+        return tag_matcher.check(["ui"])
+    except (AttributeError, TypeError):
         return True
-    return tag_matcher.check(["ui"])
 
 
 def before_all(context):
