@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import time
@@ -55,24 +56,44 @@ async def run_mcp_agent(
         "never use 'spinbutton' or other ARIA roles not in: textbox, checkbox, radio, combobox, slider.\n"
     )
 
+    action_prompt = base_prompt + (
+        "Your task is to PERFORM AN ACTION. "
+        "Once the action is complete and you have visually verified success, "
+        "return exactly the word DONE. Do not ask for user input. "
+        "Do NOT call browser_close at any point."
+    )
+
+    # Verification: Python drives navigation + snapshot so timing is reliable.
+    # The LLM only reasons about the snapshot text — no tool use needed.
     if is_condition:
-        system_prompt = base_prompt + (
-            "Your task is to VERIFY A CONDITION.\n"
-            "Use only browser_navigate and browser_snapshot to inspect the page. "
-            "Do NOT use browser_evaluate, browser_console_messages, or any other tools.\n"
-            "Once you have enough information, output ONLY a raw JSON object — "
-            "no markdown, no preamble, no explanation:\n"
-            '{"confirmed": true/false, "reason": "<one-line explanation>"}'
+        await session.call_tool("browser_navigate", arguments={"url": url})
+        await asyncio.sleep(3)  # allow async JS (fetchMovies) to complete
+        snap_result = await session.call_tool("browser_snapshot", arguments={})
+        page_snapshot = snap_result.content[0].text if snap_result.content else "(empty snapshot)"
+
+        verify_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a web test verifier. Analyze the page accessibility snapshot and verify the condition. "
+                    "Output ONLY a raw JSON object — no markdown, no preamble, no explanation:\n"
+                    '{"confirmed": true/false, "reason": "<one-line explanation>"}'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Page snapshot:\n{page_snapshot}\n\nCondition to verify: {task}",
+            },
+        ]
+        verify_response = openai_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=verify_messages,
+            temperature=0.0,
         )
-    else:
-        system_prompt = base_prompt + (
-            "Your task is to PERFORM AN ACTION. "
-            "Once the action is complete and you have visually verified success, "
-            "return exactly the word DONE. Do not ask for user input."
-        )
+        return verify_response.choices[0].message.content or ""
 
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": action_prompt},
         {"role": "user", "content": f"URL: {url}\nTask: {task}"},
     ]
 
