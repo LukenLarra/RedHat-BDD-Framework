@@ -1,4 +1,4 @@
-name: "RedHat BDD Framework - Discovery"
+name: "Shepherd BDD - Discovery"
 description: >
   Helper action to discover all .feature files in the project.
   Outputs a JSON array to be used in a GitHub Actions matrix strategy

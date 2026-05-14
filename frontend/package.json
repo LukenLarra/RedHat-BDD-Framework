@@ -1,5 +1,5 @@
 {
-  "name": "redhat-bdd-framework-frontend",
+  "name": "shepherd-bdd-frontend",
   "version": "1.0.0",
   "description": "Frontend web para API de películas",
   "main": "server.js",

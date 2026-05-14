@@ -1,4 +1,4 @@
-name: "RedHat BDD Framework"
+name: "Shepherd BDD"
 description: >
   Stack-agnostic BDD test framework. Set up your runtime, install your
   project dependencies, and declare your database as a job-level service.
@@ -110,7 +110,7 @@ runs:
         ARGS=("--config" "$BDD_CONFIG")
         [[ -n "$FEATURE_FILE" ]] && ARGS+=("--feature-file" "$FEATURE_FILE")
         [[ -n "$TAGS" ]] && ARGS+=("--tags=$TAGS")
-        "${BDD_VENV_PATH}/bin/python" -m redhat_bdd_framework "${ARGS[@]}"
+        "${BDD_VENV_PATH}/bin/python" -m shepherd_bdd "${ARGS[@]}"
 
     - name: Normalize report paths
       if: always()

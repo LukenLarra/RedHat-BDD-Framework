@@ -1,4 +1,4 @@
-"""RedHat BDD Framework package."""
+"""Shepherd BDD package."""
 
 __all__ = ["main"]
 

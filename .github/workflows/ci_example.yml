@@ -118,7 +118,7 @@ jobs:
 
       # ── 4. Run the framework ────────────────────────────────────────────
       - name: Run BDD Framework
-        uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
+        uses: ./actions/main #LukenLarra/shepherd_bdd/actions/main@main
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
@@ -140,7 +140,7 @@ jobs:
 
       # ── 5. Publish the results ──────────────────────────────────────────
       - name: Publish Test Results
-        uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
+        uses: ./actions/publish-reports #LukenLarra/shepherd_bdd/actions/publish-reports@main
         if: ${{ always() && !env.ACT }}
         with:
           report_path: "reports/junit/*.xml"

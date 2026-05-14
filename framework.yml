@@ -7,7 +7,7 @@
 
 # Project Metadata
 project:
-  name: "RedHat-BDD-Framework"
+  name: "Shepherd BDD"
   version: "2.0.0"
 
 # Test Configuration
