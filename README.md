@@ -1,8 +1,8 @@
-# RedHat BDD Framework
+# Shepherd BDD
 
 ## 📖 Description
 
-The **RedHat BDD Framework** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily, using mock data or stub services. This framework is technology stack-independent and can run both locally and in CI/CD environments.
+The **Shepherd BDD** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily. This framework is technology stack-independent and can run both locally and in CI/CD environments.
 
 > **Key principle:** The framework is responsible only for **running your tests**. Starting your services (API, frontend, database) is your responsibility — either locally before running the CLI, or in your CI workflow before calling the action.
 
@@ -13,8 +13,8 @@ The **RedHat BDD Framework** is a framework designed to standardize the writing 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/LukenLarra/RedHat-BDD-Framework.git
-cd RedHat-BDD-Framework
+git clone https://github.com/LukenLarra/shepherd_bdd.git
+cd shepherd_bdd
 ```
 
 ### 2. Install dependencies
@@ -25,6 +25,14 @@ cd RedHat-BDD-Framework
 make install-backend
 make install-tests
 ```
+
+- **AI-powered scenarios (`@ai` tag):**
+
+```bash
+pip install -r tests/requirements.txt
+```
+
+> This installs the extra dependencies needed for `@ai` scenarios: `mcp`, `openai`, `playwright`, `python-dotenv`, and `requests`. Required only if you plan to run scenarios tagged `@ai`. You also need to set the `GROQ_API_KEY` environment variable (`export GROQ_API_KEY=your_key_here`).
 
 - **Frontend (Node.js):**
 
@@ -50,7 +58,7 @@ cd frontend && node server.js
 - **With Python:**
 
 ```bash
-python -m redhat_bdd_framework --config framework.yml
+python -m shepherd_bdd --config framework.yml
 ```
 
 - **As an installed package (recommended):**
@@ -68,7 +76,7 @@ bdd-framework --config framework.yml
 
 > The requirements below apply to the **example project** included in this repository (Python backend + Node.js frontend + PostgreSQL). Your own project may have a completely different stack.
 
-- **Python 3.8+**
+- **Python 3.11+**
 - **Node.js 18+ and npm** — required both for the frontend and for `@ai` scenarios (MCP spawns `npx @playwright/mcp@latest` to drive the browser)
 - **PostgreSQL 12+** (to run locally)
 - **pip** installed
@@ -160,7 +168,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       # 3. Call the framework — DATABASE_URL is inherited from the job env
-      - uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
+      - uses: LukenLarra/shepherd_bdd/actions/main@main
         with:
           service: "my-service"
           # python_version: "3.12"                # optional, lets uv build the venv using a specific python version
@@ -188,7 +196,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: discover
-        uses: LukenLarra/RedHat-BDD-Framework/actions/discovery@main
+        uses: LukenLarra/shepherd_bdd/actions/discovery@main
 
   # 2. Runner Job: spins up isolated machines in parallel
   parallel-bdd:
@@ -225,7 +233,7 @@ jobs:
       # [ Insert your setup steps: python, dependencies, etc. exact same as Sequential ]
 
       - name: Run BDD Framework
-        uses: LukenLarra/RedHat-BDD-Framework/actions/main@main
+        uses: LukenLarra/shepherd_bdd/actions/main@main
         with:
           service: "my-service"
           feature_file: ${{ matrix.feature_file }}
@@ -247,7 +255,7 @@ jobs:
           path: reports/junit
           merge-multiple: true
 
-      - uses: LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
+      - uses: LukenLarra/shepherd_bdd/actions/publish-reports@main
         with:
           report_path: "reports/junit/*.xml"
           # The action now also generates a Markdown summary and uploads it as an artifact.
@@ -305,8 +313,6 @@ For import resolution of project modules, the framework sets `PYTHONPATH` in the
 
 The `framework.yml` file is the core of the configuration. It defines how the framework locates and runs your tests, which environment variables to inject, and where to write reports.
 
-> **Note:** The framework does **not** start or stop your services. Service lifecycle is entirely your responsibility — start them before invoking the framework (locally or in CI).
-
 ### Workflow and Configuration Requirements
 
 To use the framework in your own project, you must provide a `framework.yml` configuration file with the following keys:
@@ -327,7 +333,7 @@ In your CI workflow, you must:
 
 ---
 
-### 📂 Required Users Project Structure
+### 📂 Required Project Structure
 
 The framework does not enforce a fixed directory structure, but the paths specified in your `framework.yml` must exist and be correct. For example:
 
@@ -348,7 +354,7 @@ You can customize the names and locations, but you must update the configuration
 
 ```yaml
 project:
-  name: "RedHat-BDD-Framework"
+  name: "Shepherd BDD"
   version: "2.0.0"
 
 tests:
@@ -377,7 +383,7 @@ The `command` value is any shell command that invokes Behave — use whatever fi
 - The framework is database-agnostic; your application must handle its own database connection using an environment variable (e.g., `DATABASE_URL`).
 - The framework does not validate the internal logic of your tests or guarantee compatibility with non-standard stacks.
 - No built-in support for stacks or languages outside Python for BDD steps.
-- The framework does not start, stop, or health-check your services. You are responsible for ensuring services are up before running tests.
+- The framework does not start, stop, or health-check your services — see the [Key principle](#-description) above.
 
 ---
 
@@ -438,7 +444,7 @@ The framework works the same way locally and in CI/CD — it reads `framework.ym
 
 ```bash
 # Using the Python module
-python -m redhat_bdd_framework --config framework.yml
+python -m shepherd_bdd --config framework.yml
 
 # Using the installed CLI entry point
 bdd-framework --config framework.yml
@@ -544,7 +550,29 @@ This will parse the XML reports and output a `bdd-test-summary.md` file in the `
 - **Backend:** Python (FastAPI + Uvicorn) with PostgreSQL + SQLAlchemy ORM
 - **Frontend:** Node.js (Express)
 - **BDD Tests:** Python (Behave)
-- **Orchestrator:** `redhat_bdd_framework` CLI — reads `framework.yml`, injects env vars, and runs Behave
+- **Orchestrator:** `shepherd_bdd` CLI — reads `framework.yml`, injects env vars, and runs Behave
 - **Database:** PostgreSQL 12+ (ephemeral in CI, local in development)
+
+### Backend API Endpoints
+
+| Method | Path               | Description                                                                       |
+| ------ | ------------------ | --------------------------------------------------------------------------------- |
+| `GET`  | `/`                | Root — lists available endpoints                                                  |
+| `GET`  | `/health`          | Health check — used by the framework's service health-check loop                  |
+| `GET`  | `/api/movies`      | Retrieve all movies                                                               |
+| `GET`  | `/api/movies/{id}` | Retrieve a movie by ID                                                            |
+| `POST` | `/api/movies`      | Create a new movie                                                                |
+| `POST` | `/api/test/reset`  | Reset the database to its initial state (only active when `ENABLE_TEST_API=true`) |
+
+### BDD Test Suite (`tests/`)
+
+- `features/movies.feature`: Basic CRUD scenarios for the movies API
+- `features/read_movies_extended.feature`: Extended read scenarios (filters, edge cases)
+- `features/ai_movies.feature`: AI-powered semantic validation scenarios (`@ai` tag)
+- `features/frontend_ai.feature`: Frontend UI scenarios with AI assertions (`@ai` tag)
+- `features/steps/movie_steps.py`: HTTP request steps using `requests`
+- `features/steps/frontend_steps.py`: Browser automation via Playwright
+- `features/environment.py`: Behave hooks — starts Playwright browser, MCP session manager for AI, waits for API health, resets DB between scenarios
+- `run_bdd_tests.py`: Wrapper that passes CLI args to Behave
 
 ---

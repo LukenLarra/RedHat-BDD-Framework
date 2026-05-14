@@ -1,4 +1,4 @@
-"""CLI implementation for the RedHat BDD Framework."""
+"""CLI implementation for Shepherd BDD."""
 
 import argparse
 import os
@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from redhat_bdd_framework.behave_utils import (
+from shepherd_bdd.behave_utils import (
     BEHAVE_FLAGS_WITH_VALUES,
     is_feature_target,
     iterate_tokens,
@@ -397,9 +397,9 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Usage examples:
-  python -m redhat_bdd_framework --config framework.yml
+  python -m shepherd_bdd --config framework.yml
   bdd-framework --config framework.yml --tags @smoke
-  python -m redhat_bdd_framework --config framework.yml --tags @critical --no-capture
+  python -m shepherd_bdd --config framework.yml --tags @critical --no-capture
         """,
     )
 

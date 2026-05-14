@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import yaml
 
-from redhat_bdd_framework.cli import BDDFramework
+from shepherd_bdd.cli import BDDFramework
 
 
 class TestBDDCliRuntimePaths(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestBDDCliRuntimePaths(unittest.TestCase):
 
             framework = BDDFramework(str(config_path))
 
-            with patch("redhat_bdd_framework.cli.subprocess.run") as mock_run:
+            with patch("shepherd_bdd.cli.subprocess.run") as mock_run:
                 mock_proc = Mock()
                 mock_proc.returncode = 0
                 mock_run.return_value = mock_proc
@@ -108,7 +108,7 @@ class TestBDDCliRuntimePaths(unittest.TestCase):
 
             framework = BDDFramework(str(config_path))
 
-            with patch("redhat_bdd_framework.cli.subprocess.run") as mock_run:
+            with patch("shepherd_bdd.cli.subprocess.run") as mock_run:
                 mock_proc = Mock()
                 mock_proc.returncode = 0
                 mock_run.return_value = mock_proc

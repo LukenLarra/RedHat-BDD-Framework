@@ -1,4 +1,4 @@
-name: "RedHat BDD Framework - Publish Reports"
+name: "Shepherd BDD - Publish Reports"
 description: >
   Helper action to publish unit test results to a pull request or commit.
   Used by the primary workflow after downloading the generated XML files

@@ -29,7 +29,7 @@ jobs:
 
       - name: Discover BDD Features
         id: discover
-        uses: ./actions/discovery # LukenLarra/RedHat-BDD-Framework/actions/discovery@main
+        uses: ./actions/discovery # LukenLarra/shepherd_bdd/actions/discovery@main
 
   # ============================================================
   # PHASE 2 — PARALLEL EXECUTION
@@ -139,7 +139,7 @@ jobs:
       # Only change `service`. Everything else is handled by the framework.
       # ──────────────────────────────────────────────────────────────────
       - name: Run BDD Framework (Parallel)
-        uses: ./actions/main #LukenLarra/RedHat-BDD-Framework/actions/main@main
+        uses: ./actions/main #LukenLarra/shepherd_bdd/actions/main@main
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
@@ -179,7 +179,7 @@ jobs:
           merge-multiple: true
 
       - name: Publish merged test results
-        uses: ./actions/publish-reports #LukenLarra/RedHat-BDD-Framework/actions/publish-reports@main
+        uses: ./actions/publish-reports #LukenLarra/shepherd_bdd/actions/publish-reports@main
         if: ${{ always() && !env.ACT }}
         with:
           report_path: "reports/junit/*.xml"

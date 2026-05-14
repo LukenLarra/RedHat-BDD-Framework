@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from redhat_bdd_framework.behave_utils import (
+from shepherd_bdd.behave_utils import (
     BEHAVE_FLAGS_WITH_VALUES,
     is_feature_target,
     iterate_tokens,

@@ -1,4 +1,4 @@
-# GitHub Actions for RedHat BDD Framework
+# GitHub Actions for Shepherd BDD
 
 This directory contains custom actions used by GitHub Actions workflows in this repository.
 
@@ -6,7 +6,7 @@ This directory contains custom actions used by GitHub Actions workflows in this 
 
 ### `actions/discovery`
 
-- Name: `RedHat BDD Framework - Discovery`
+- Name: `Shepherd BDD - Discovery`
 - What it does:
   - Discovers all `.feature` files in the project.
   - Produces a `matrix` output containing the list of feature file paths.
@@ -17,10 +17,10 @@ This directory contains custom actions used by GitHub Actions workflows in this 
 
 ### `actions/main`
 
-- Name: `RedHat BDD Framework`
+- Name: `Shepherd BDD`
 - What it does:
   - Installs the BDD framework and project dependencies.
-  - Runs the BDD tests using `python -m redhat_bdd_framework`.
+  - Runs the BDD tests using `python -m shepherd_bdd`.
   - Uploads test report artifacts (`reports/junit/*.xml`) when available.
 - Important inputs:
   - `service`: service name used for artifact naming.
@@ -30,7 +30,7 @@ This directory contains custom actions used by GitHub Actions workflows in this 
 
 ### `actions/publish-reports`
 
-- Name: `RedHat BDD Framework - Publish Reports`
+- Name: `Shepherd BDD - Publish Reports`
 - What it does:
   - Publishes unit test results from XML report files.
   - Uses `EnricoMi/publish-unit-test-result-action@v2`.

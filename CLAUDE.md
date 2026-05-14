@@ -70,7 +70,7 @@ export GROQ_API_KEY=your_key_here   # only for AI-powered test scenarios
 
 This is a **stack-agnostic BDD testing framework** that orchestrates services, runs Gherkin-based tests via Behave, and publishes results to GitHub Checks. It serves both as a runnable example (movies API + frontend) and as a published GitHub Actions composite action.
 
-### Core Framework (`redhat_bdd_framework/`)
+### Core Framework (`shepherd_bdd/`)
 
 - `cli.py`: Main orchestrator — loads `framework.yml`, validates config, health-checks services (60s timeout), injects env vars, runs `python -m behave` with JUnit reporting
 - `__main__.py`: Entry point for the `bdd-framework` CLI
@@ -93,7 +93,7 @@ Express.js web server (port 3000) serving static files from `public/`.
 
 ### GitHub Actions (`actions/`)
 
-Three reusable composite actions published as `LukenLarra/RedHat-BDD-Framework/actions/*@main`:
+Three reusable composite actions published as `LukenLarra/shepherd_bdd/actions/*@main`:
 
 - `main/`: Runs BDD tests in isolated Python venv
 - `discovery/`: Scans for `.feature` files, outputs a JSON matrix for parallel CI runs

@@ -3,11 +3,11 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "redhat-bdd-framework"
+name = "shepherd-bdd"
 version = "0.1.0"
 description = "Stack-agnostic BDD test framework for CI workflows"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "behave==1.2.6",
     "PyYAML==6.0.1",
@@ -15,10 +15,10 @@ dependencies = [
 ]
 
 [project.scripts]
-bdd-framework = "redhat_bdd_framework.cli:main"
+bdd-framework = "shepherd_bdd.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["redhat_bdd_framework*"]
+include = ["shepherd_bdd*"]
 
 # Configuración de herramientas de Python
 # ========================================
@@ -70,7 +70,7 @@ ignore = [
 
 # Configuración de isort (ordenamiento de imports)
 [tool.ruff.lint.isort]
-known-first-party = ["redhat_bdd_framework"]
+known-first-party = ["shepherd_bdd"]
 
 [tool.ruff.format]
 # Configuración del formateador (compatible con black)

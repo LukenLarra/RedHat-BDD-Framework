@@ -1,4 +1,4 @@
-"""Module entrypoint for `python -m redhat_bdd_framework`."""
+"""Module entrypoint for `python -m shepherd_bdd`."""
 
 from .cli import main
 
