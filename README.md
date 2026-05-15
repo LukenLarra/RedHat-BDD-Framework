@@ -1,8 +1,12 @@
 # Shepherd BDD
 
+<p align="center">
+  <img src="docs/shepherd-bdd-logo.png" alt="Shepherd BDD Logo" width="100%" />
+</p>
+
 ## 📖 Description
 
-The **Shepherd BDD** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily. This framework is technology stack-independent and can run both locally and in CI/CD environments.
+**Shepherd BDD** is a framework designed to standardize the writing and execution of BDD (Behavior-Driven Development) tests. It allows testing integrations between services and specific behaviors easily. This framework is technology stack-independent and can run both locally and in CI/CD environments.
 
 > **Key principle:** The framework is responsible only for **running your tests**. Starting your services (API, frontend, database) is your responsibility — either locally before running the CLI, or in your CI workflow before calling the action.
 
